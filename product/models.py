@@ -1,8 +1,8 @@
 from django.db import models
-from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
 category = [
@@ -18,8 +18,27 @@ category = [
 ]
 
 
+class CustomUser(AbstractUser):
+    phone_number = models.CharField(max_length=15,blank=False, null=False)
+    username=models.CharField(max_length=50,blank=False, null=False,unique=True)
+    first_name=models.CharField(max_length=50,blank=False, null=False)
+    image = models.ImageField(null=True, blank=True, upload_to='photos')
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='customuser_groups',
+        blank=True,
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='customuser_permissions',
+        blank=True,
+    )
+
+
+
+
 class Comment(models.Model):
-    creator = models.ForeignKey(User, on_delete=models.CASCADE)
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     content = models.TextField()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
@@ -36,7 +55,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to='photos')
-    user = models.ForeignKey(User, on_delete=models.CASCADE) 
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE) 
     comment = GenericRelation(Comment)
     
     def __str__(self):
@@ -51,13 +70,10 @@ class ProductAuction(models.Model):
     start_date = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=50, choices=category, null=True)
     image = models.ImageField(null=True, blank=True, upload_to='photos')
-    user = models.ForeignKey(User, on_delete=models.CASCADE,related_name='user')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,related_name='user')
     comment = GenericRelation(Comment)
-    buyer=models.OneToOneField(User, on_delete=models.CASCADE,related_name='buyer')
+    buyer=models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='buyer')
     activate=models.BooleanField()
     
     def __str__(self):
         return self.id
-
-
-
