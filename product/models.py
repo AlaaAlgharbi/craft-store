@@ -51,7 +51,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     description = models.CharField(max_length=100, blank=True, null=True)
     price = models.IntegerField()
-    rate = models.DecimalField(max_digits=2, decimal_places=1, default=0)
+    rate = models.DecimalField(max_digits=2, decimal_places=1, default=0 , blank=True , null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to='photos')
@@ -59,7 +59,7 @@ class Product(models.Model):
     comment = GenericRelation(Comment)
     
     def __str__(self):
-        return self.id
+        return self.name
 
 class ProductAuction(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)

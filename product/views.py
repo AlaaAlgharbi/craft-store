@@ -1,5 +1,5 @@
 from rest_framework import generics
-from .serializers import UserDetailsSerializer,SianUpUserSerializer,ListUserSerializer
+from .serializers import *
 from .models import CustomUser
 
 class UserCreate(generics.CreateAPIView):
@@ -14,3 +14,19 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     lookup_field="username"
     queryset = CustomUser.objects.all()
     serializer_class = UserDetailsSerializer
+
+
+class ProductCreat(generics.CreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class ProductList(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductDetailSerializer
+
+
+class ProdutDetails(generics.RetrieveUpdateDestroyAPIView):
+    lookup_field="name"
+    queryset = Product.objects.all()
+    serializer_class = ProductDetailSerializer
