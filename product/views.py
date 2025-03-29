@@ -3,31 +3,21 @@ from .serializers import *
 from .models import CustomUser
 from rest_framework.authentication import BaseAuthentication
 
-class UserCreate(generics.CreateAPIView):
+class UserList(generics.ListCreateAPIView):
     queryset = CustomUser.objects.all()
-    serializer_class = SianUpUserSerializer
-
-class UserList(generics.ListAPIView):
-    queryset = CustomUser.objects.all()
-    serializer_class = ListUserSerializer
+    serializer_class = UserSerializer
 
 class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     lookup_field="username"
     queryset = CustomUser.objects.all()
-    serializer_class = UserDetailsSerializer
+    serializer_class = UserSerializer
 
 
-class ProductCreat(generics.CreateAPIView):
+class ProductList(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
 
-class ProductList(generics.ListAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductDetailSerializer
-
-
 class ProdutDetails(generics.RetrieveUpdateDestroyAPIView):
-    lookup_field="name"
     queryset = Product.objects.all()
     serializer_class = ProductDetailSerializer
