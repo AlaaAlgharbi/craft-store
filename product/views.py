@@ -1,6 +1,7 @@
 from rest_framework import generics
 from .serializers import *
 from .models import CustomUser
+from rest_framework.authentication import BaseAuthentication
 
 class UserList(generics.ListCreateAPIView):
     queryset = CustomUser.objects.all()
