@@ -16,7 +16,7 @@ class ProductSerializer(serializers.ModelSerializer):
     user_image = serializers.SerializerMethodField()
     class Meta :
         model = Product
-        fields = ["name","price","category","image","description","user_name","user_image","rate"]
+        fields = ["name","price","category","image","description","user_name","user_image","rate", "user"]
         read_only_fields  = ["user_image","user_name","rate"]
         extra_kwargs = {
             "category": {"write_only": True},
