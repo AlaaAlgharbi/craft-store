@@ -4,7 +4,6 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import AbstractUser
 
-# Create your models here.
 category = [
     ("Accessories", "Accessories"),
     ("Candle", "Candle"),

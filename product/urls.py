@@ -7,3 +7,8 @@ urlpatterns = [
     path("products/", ProductList.as_view(), name="product_List"),
     path("products/<int:pk>", ProdutDetails.as_view(), name="product_detail"),
 ]
+
+
+urlpatterns += [
+    path("auth/", include("rest_framework.urls")),
+    ]
