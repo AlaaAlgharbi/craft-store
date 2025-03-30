@@ -131,9 +131,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
     ]
 }
+
+AUTH_USER_MODEL = 'product.CustomUser'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_METHODS = (
