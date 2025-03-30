@@ -3,24 +3,39 @@ from rest_framework import serializers
 from .models import CustomUser , Product , ProductAuction 
 
 class UserSerializer(serializers.ModelSerializer):
-    # password = serializers.CharField(write_only=True)
     class Meta:
         model = CustomUser
         fields = ["username","first_name","phone_number","image","password"]
         extra_kwargs = {
             "password": {"write_only": True}}
+        
+    def create(self, validated_data):
+        # استدعاء set_password لتشفير كلمة المرور
+        password = validated_data.pop("password", None)
+        instance = self.Meta.model(**validated_data)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
+    def update(self, instance, validated_data):
+    # تحديث كلمة المرور 
+        password = validated_data.pop("password", None)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+        
 class ProductSerializer(serializers.ModelSerializer):
     
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     class Meta :
         model = Product
-        fields = ["name","price","category","image","description","user_name","user_image","rate", "user"]
+        fields = ["name","price","category","image","description","user_name","user_image","rate"]
         read_only_fields  = ["user_image","user_name","rate"]
         extra_kwargs = {
             "category": {"write_only": True},
-            "user": {"write_only": True},
             "description": {"write_only": True},}
         
     def get_user_name(self, obj):
