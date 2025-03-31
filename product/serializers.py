@@ -19,13 +19,15 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-    # تحديث كلمة المرور 
+        # تحديث الحقول مع التحقق من كلمة المرور الجديدة
         password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         if password:
             instance.set_password(password)
         instance.save()
         return instance
-        
+    
 class ProductSerializer(serializers.ModelSerializer):
     
     user_name = serializers.SerializerMethodField()
