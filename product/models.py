@@ -69,14 +69,17 @@ class ProductAuction(models.Model):
     current_price = models.IntegerField()
     end_date = models.DateTimeField()
     start_date = models.DateTimeField(auto_now_add=True)
-    category = models.CharField(max_length=50, choices=category, null=True)
+    category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user")
     comment = GenericRelation(Comment)
-    buyer = models.OneToOneField(
-        CustomUser, on_delete=models.CASCADE, related_name="buyer"
-    )
-    activate = models.BooleanField()
+    buyer = models.OneToOneField(CustomUser, on_delete=models.SET_NULL, related_name="buyer",blank=True, null=True)
+    activate = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.id
+        return self.name
+    def save(self, *args, **kwargs):
+        # منطق مخصص لتحديث "is_active" بناءً على الوقت الحالي و "end_date"
+        from django.utils.timezone import now
+        self.activate = now() < self.end_date
+        super().save(*args, **kwargs)  # حفظ التعديلات
