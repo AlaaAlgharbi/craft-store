@@ -1,6 +1,6 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction 
+from .models import CustomUser , Product , ProductAuction , Chat
 from django.utils.timezone import now
 from django.utils import timezone
 
@@ -139,3 +139,31 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
             "minutes": minutes,
             "seconds": seconds,
         }    
+
+class ChatSerializer(serializers.ModelSerializer):
+    sender = UserSerializer(read_only=True)
+    receiver = UserSerializer(read_only=True)
+    receiver_username = serializers.CharField(write_only=True)
+  
+
+    class Meta:
+        model = Chat
+        fields = ['id', 'sender', 'receiver', 'receiver_username', 'message', 'timestamp', 'is_read']
+        read_only_fields = ['sender', 'receiver', 'timestamp']
+
+    def create(self, validated_data):
+        receiver_username = validated_data.pop('receiver_username')
+        try:
+            receiver = CustomUser.objects.get(username=receiver_username)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({'receiver_username': 'User not found'})
+        
+        validated_data['sender'] = self.context['request'].user
+        validated_data['receiver'] = receiver
+        return super().create(validated_data)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['timestamp'] = instance.timestamp.isoformat()
+        return representation    
+    
