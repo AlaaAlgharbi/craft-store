@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from .serializers import *
 from .models import CustomUser, Chat
-from .permissions import AuthorModifyOrReadOnly1, AuthorModifyOrReadOnly2
+from .permissions import AuthorModifyOrReadOnly1, AuthorModifyOrReadOnly2,IsCommentCreator
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
@@ -60,13 +60,19 @@ class ProductAuctionCreate(generics.CreateAPIView):
         serializer.save(user=self.request.user)
 
 
-class ProdutDetails(generics.RetrieveUpdateDestroyAPIView):
+class ProductDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [AuthorModifyOrReadOnly1]
     queryset = Product.objects.all()
     serializer_class = ProductDetailSerializer
-
-
-class ProdutAuctionDetails(generics.RetrieveUpdateDestroyAPIView):
+    
+class CommentDelete(generics.DestroyAPIView):
+    permission_classes = [IsCommentCreator]
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    
+    
+    
+class ProductAuctionDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [AuthorModifyOrReadOnly1]
     queryset = ProductAuction.objects.all()
     serializer_class = ProductAuctionDetailsSerializer
