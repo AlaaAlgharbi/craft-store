@@ -1,3 +1,4 @@
+from itertools import chain
 from rest_framework import generics, permissions
 from .serializers import *
 from .models import CustomUser, Chat
@@ -78,9 +79,7 @@ class ChatListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return Chat.objects.filter(
-            models.Q(sender=user) 
-        ).order_by("-timestamp")
+        return Chat.objects.filter(models.Q(sender=user)).order_by("-timestamp")
 
 
 class ChatDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -105,21 +104,36 @@ class UserChatListView(generics.ListAPIView):
         ).order_by("-timestamp")
 
 
-class SearchUser(generics.ListAPIView):
-    serializer_class = UserSerializer
-    queryset = CustomUser.objects.all()
+class SearchAllView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        search_query = self.kwargs.get("query", "").lower()
+
+        # Search in users
+        users = CustomUser.objects.filter(
+            models.Q(username__icontains=search_query)
+            | models.Q(first_name__icontains=search_query)
+        ).exclude(id=self.request.user.id)
+
+        # Search in products
+        products = Product.objects.filter(models.Q(name__icontains=search_query))
+
+        # Combine results with type information
+        results = []
+        for user in users:
+            results.append({"type": "user", "data": UserSerializer(user).data})
+
+        for product in products:
+            results.append({"type": "product", "data": ProductSerializer(product).data})
+
+        return results
 
     def list(self, request, *args, **kwargs):
-        username = self.kwargs.get("username").lower()
-        users = CustomUser.objects.filter(
-            models.Q(username__icontains=username)
-            | models.Q(first_name__icontains=username)
-        ).exclude(id=self.request.user.id)
-        if not users.exists():
-            return Response({"No users found"})
-        else:
-            serializer = self.get_serializer(users, many=True)
-            return Response(serializer.data)
+        results = self.get_queryset()
+        if not results:
+            return Response({"message": "No results found"}, status=200)
+        return Response(results)
 
 
 class SearchMessageView(generics.ListAPIView):
@@ -127,13 +141,13 @@ class SearchMessageView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        search_query = self.kwargs.get('message', '').lower()
+        search_query = self.kwargs.get("message", "").lower()
         user = self.request.user
-        
+
         return Chat.objects.filter(
-            models.Q(message__icontains=search_query) &
-            (models.Q(sender=user) | models.Q(receiver=user))
-        ).order_by('-timestamp')
+            models.Q(message__icontains=search_query)
+            & (models.Q(sender=user) | models.Q(receiver=user))
+        ).order_by("-timestamp")
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -141,6 +155,3 @@ class SearchMessageView(generics.ListAPIView):
             return Response({"message": "No messages found"}, status=200)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-
-
