@@ -1,8 +1,13 @@
+from django.shortcuts import get_object_or_404
 from itertools import chain
 from rest_framework import generics, permissions
 from .serializers import *
 from .models import CustomUser, Chat
-from .permissions import AuthorModifyOrReadOnly1, AuthorModifyOrReadOnly2,IsCommentCreator
+from .permissions import (
+    AuthorModifyOrReadOnly1,
+    AuthorModifyOrReadOnly2,
+    IsCommentCreator,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
@@ -42,6 +47,52 @@ class AllProductsView(APIView):
         # إرجاع البيانات مرتبة
         return Response(sorted_data)
 
+class ProductRatingCreateView(generics.CreateAPIView):
+
+    serializer_class = ProductRatingSerializer
+
+    def post(self, request, product_id, *args, **kwargs):
+        product = get_object_or_404(Product, id=product_id)
+
+        rating_value = request.data.get('rating')
+
+        rating_instance, created = ProductRating.objects.update_or_create(
+            product=product,
+            user=request.user,
+            defaults={
+                'rating': rating_value,
+            }
+        )
+
+        serializer = ProductRatingSerializer(rating_instance)
+        return Response(serializer.data, status=201 if created else 200)
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ProductRatingCreateView(generics.CreateAPIView):
+
+    serializer_class = ProductRatingSerializer
+
+    def post(self, request, product_id, *args, **kwargs):
+        product = get_object_or_404(Product, id=product_id)
+
+        rating_value = request.data.get("rating")
+
+        rating_instance, created = ProductRating.objects.update_or_create(
+            product=product,
+            user=request.user,
+            defaults={
+                "rating": rating_value,
+            },
+        )
+
+        serializer = ProductRatingSerializer(rating_instance)
+        return Response(serializer.data, status=201 if created else 200)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 class ProductCreate(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -65,14 +116,14 @@ class ProductDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [AuthorModifyOrReadOnly1]
     queryset = Product.objects.all()
     serializer_class = ProductDetailSerializer
-    
+
+
 class CommentDelete(generics.DestroyAPIView):
     permission_classes = [IsCommentCreator]
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    
-    
-    
+
+
 class ProductAuctionDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [AuthorModifyOrReadOnly1]
     queryset = ProductAuction.objects.all()
