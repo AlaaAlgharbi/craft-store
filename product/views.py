@@ -48,7 +48,6 @@ class AllProductsView(APIView):
         return Response(sorted_data)
 
 
-
 class ProductRatingCreateView(generics.CreateAPIView):
 
     serializer_class = ProductRatingSerializer
