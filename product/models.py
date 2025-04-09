@@ -3,6 +3,9 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import AbstractUser
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.db.models import Avg
 
 category = [
     ("Accessories", "Accessories"),
@@ -48,9 +51,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     description = models.CharField(max_length=100, blank=True, null=True)
     price = models.IntegerField()
-    rate = models.DecimalField(
-        max_digits=2, decimal_places=1, default=0, blank=True, null=True
-    )
+    rate = models.FloatField(default=0.0,blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
@@ -59,7 +60,14 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+    
+class ProductRating(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="ratings")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    rating = models.PositiveIntegerField()  
 
+    class Meta:
+        unique_together = ("product", "user") 
 
 class ProductAuction(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
@@ -92,3 +100,18 @@ class Chat(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+        
+        
+@receiver(post_save, sender=ProductRating)
+def update_product_rate_on_save(sender, instance, created, **kwargs):
+    product = instance.product
+    avg_rate = ProductRating.objects.filter(product=product).aggregate(avg=Avg('rating'))['avg'] or 0.0
+    product.rate = avg_rate
+    product.save()
+
+@receiver(post_delete, sender=ProductRating)
+def update_product_rate_on_delete(sender, instance, **kwargs):
+    product = instance.product
+    avg_rate = ProductRating.objects.filter(product=product).aggregate(avg=Avg('rating'))['avg'] or 0.0
+    product.rate = avg_rate
+    product.save()        

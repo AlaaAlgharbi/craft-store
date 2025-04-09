@@ -1,6 +1,6 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction , Chat ,Comment
+from .models import CustomUser , Product , ProductAuction , Chat , Comment, ProductRating
 from django.utils.timezone import now
 from django.utils import timezone
 
@@ -37,6 +37,13 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "creator", "content"]
+   
+   
+class ProductRatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductRating
+        fields = ["id", "user", "rating"]
+        read_only_fields = ["user", "created_at"]   
     
 class ProductSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -86,23 +93,37 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
     
     
 class ProductDetailSerializer(serializers.ModelSerializer):
+    ratings = ProductRatingSerializer(many=True, read_only=True)
+    rate = serializers.SerializerMethodField()
     comment = CommentSerializer(many=True, required=False)
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     class Meta : 
         model = Product
-        fields = ["name","price","category","image","description","comment",
+        fields = ["name","price","category","image","description","comment","ratings",
                 "user_name","user_image","rate","created_at"]
         read_only_fields = ["rate","created_at","user_name","user_image"]
         extra_kwargs = {
             "name": {"required": False},
             "price": {"required": False},
-            "category": {"required": False}
+            "category": {"required": False},
         }
     def get_user_name(self, obj):
         return obj.user.username if obj.user else None
     def get_user_image(self, obj):
         return obj.user.image.url if obj.user and obj.user.image else None 
+    
+    def get_rate(self, obj):
+        ratings = obj.ratings.all()
+        if ratings.exists():
+            return sum(rating.rating for rating in ratings) / ratings.count()
+        return 0.0 
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # إزالة حقل ratings من النتيجة النهائية
+        representation.pop("ratings", None)
+        return representation
     
     def update(self, instance, validated_data):
         for field in ["name", "price", "category"]:
