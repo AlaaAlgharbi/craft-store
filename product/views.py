@@ -47,27 +47,6 @@ class AllProductsView(APIView):
         # إرجاع البيانات مرتبة
         return Response(sorted_data)
 
-class ProductRatingCreateView(generics.CreateAPIView):
-
-    serializer_class = ProductRatingSerializer
-
-    def post(self, request, product_id, *args, **kwargs):
-        product = get_object_or_404(Product, id=product_id)
-
-        rating_value = request.data.get('rating')
-
-        rating_instance, created = ProductRating.objects.update_or_create(
-            product=product,
-            user=request.user,
-            defaults={
-                'rating': rating_value,
-            }
-        )
-
-        serializer = ProductRatingSerializer(rating_instance)
-        return Response(serializer.data, status=201 if created else 200)
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 class ProductRatingCreateView(generics.CreateAPIView):

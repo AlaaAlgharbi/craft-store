@@ -114,3 +114,24 @@ def update_product_rate_on_delete(sender, instance, **kwargs):
     avg_rate = ProductRating.objects.filter(product=product).aggregate(avg=Avg('rating'))['avg'] or 0.0
     product.rate = avg_rate
     product.save()        
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('auction_end', 'Auction Ended'),
+        ('outbid', 'You Were Outbid'),
+        ('auction_won', 'You Won the Auction'),
+        ('auction_lost', 'You Lost the Auction'),
+    )
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    auction = models.ForeignKey(ProductAuction, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_notification_type_display()} - {self.user.username}"        
