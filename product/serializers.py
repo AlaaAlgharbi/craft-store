@@ -1,6 +1,6 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction , Chat , Comment, ProductRating
+from .models import CustomUser , Product , ProductAuction , Chat , Comment, ProductRating, Notification
 from django.utils.timezone import now
 from django.utils import timezone
 
@@ -137,6 +137,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                 Comment.objects.create(content_object=instance,
                 creator=self.context["request"].user,**comment)
         return instance
+    
 class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     comment = CommentSerializer(many=True, required=False)
     end_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
@@ -201,6 +202,7 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
                 Comment.objects.create(content_object=instance,
                 creator=self.context["request"].user,**comment)
         return instance
+    
 class ChatSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     receiver = UserSerializer(read_only=True)
@@ -227,4 +229,12 @@ class ChatSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['timestamp'] = instance.timestamp.isoformat()
         return representation    
+    
+class NotificationSerializer(serializers.ModelSerializer):
+    auction = ProductAuctionSerializer(read_only=True)
+    
+    class Meta:
+        model = Notification
+        fields = ['id', 'notification_type', 'message', 'is_read', 'created_at', 'auction']
+        read_only_fields = ['id', 'created_at']
     
