@@ -17,9 +17,6 @@ urlpatterns = [
     path("chat/user/<int:user_id>/", UserChatListView.as_view(), name="user-chat-list"),
     path("search/<str:query>/", SearchAllView.as_view(), name="user-search"),
     path("chat/search/<str:message>/", ChatListCreateView.as_view(), name="message-search"),
-    path("notifications/", NotificationListView.as_view(), name="notification-list"),
-    path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
-    path("notifications/check/", CheckAuctionNotifications.as_view(), name="check-notifications"),
 ]
 
 
