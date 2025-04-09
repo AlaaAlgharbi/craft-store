@@ -1,6 +1,6 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction , Chat , Comment, ProductRating, Notification
+from .models import CustomUser , Product , ProductAuction , Chat , Comment, ProductRating
 from django.utils.timezone import now
 from django.utils import timezone
 
@@ -230,11 +230,4 @@ class ChatSerializer(serializers.ModelSerializer):
         representation['timestamp'] = instance.timestamp.isoformat()
         return representation    
     
-class NotificationSerializer(serializers.ModelSerializer):
-    auction = ProductAuctionSerializer(read_only=True)
-    
-    class Meta:
-        model = Notification
-        fields = ['id', 'notification_type', 'message', 'is_read', 'created_at', 'auction']
-        read_only_fields = ['id', 'created_at']
     
