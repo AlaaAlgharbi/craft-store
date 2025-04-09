@@ -1,6 +1,5 @@
 from django.shortcuts import get_object_or_404
-from itertools import chain
-from rest_framework import generics, permissions
+from rest_framework import generics
 from .serializers import *
 from .models import CustomUser, Chat
 from .permissions import (
