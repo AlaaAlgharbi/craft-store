@@ -37,7 +37,9 @@ class CustomUser(AbstractUser):
 class Comment(models.Model):
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     content = models.TextField()
-
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
     def __str__(self):
         return self.content
 
@@ -53,7 +55,7 @@ class Product(models.Model):
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE ,null=False)
-    # comment = GenericRelation(Comment)
+    comment = GenericRelation(Comment)
 
     def __str__(self):
         return self.name
@@ -69,7 +71,7 @@ class ProductAuction(models.Model):
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user")
-    # comment = GenericRelation(Comment)
+    comment = GenericRelation(Comment)
     buyer =models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name="buyer",blank=True, null=True)
 
 

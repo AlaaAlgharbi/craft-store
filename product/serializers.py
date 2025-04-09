@@ -1,6 +1,6 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction , Chat
+from .models import CustomUser , Product , ProductAuction , Chat ,Comment
 from django.utils.timezone import now
 from django.utils import timezone
 
@@ -29,6 +29,14 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+    
+class CommentSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    creator = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ["id", "creator", "content"]
     
 class ProductSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -78,19 +86,38 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
     
     
 class ProductDetailSerializer(serializers.ModelSerializer):
+    comment = CommentSerializer(many=True, required=False)
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     class Meta : 
         model = Product
-        fields = ["name","price","category","image","description",
+        fields = ["name","price","category","image","description","comment",
                 "user_name","user_image","rate","created_at"]
         read_only_fields = ["rate","created_at","user_name","user_image"]
+        extra_kwargs = {
+            "name": {"required": False},
+            "price": {"required": False},
+            "category": {"required": False}
+        }
     def get_user_name(self, obj):
         return obj.user.username if obj.user else None
     def get_user_image(self, obj):
         return obj.user.image.url if obj.user and obj.user.image else None 
     
+    def update(self, instance, validated_data):
+        for field in ["name", "price", "category"]:
+            if field not in validated_data or not validated_data.get(field):
+                validated_data[field] = getattr(instance, field)
+        comments_data = validated_data.pop("comment", [])
+        instance = super().update(instance, validated_data)
+
+        for comment in comments_data:
+            if not comment.get("id"):  
+                Comment.objects.create(content_object=instance,
+                creator=self.context["request"].user,**comment)
+        return instance
 class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
+    comment = CommentSerializer(many=True, required=False)
     end_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     start_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     user_name = serializers.SerializerMethodField()
@@ -101,11 +128,13 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","inital_price","category","image",
+        fields = ["name","current_price","inital_price","category","image","comment",
                 "description","buyer","user_name","user_image","product_type","end_date","start_date","activate","countdown"]
         read_only_fields  = ["current_price","inital_price","image",
                 "category","user_name","user_image","product_type","end_date","start_date","buyer","activate"]
-    
+        extra_kwargs = {
+            "name": {"required": False}
+            }    
     def get_user_name(self, obj):
         return obj.user.username if obj.user else None
     
@@ -138,8 +167,19 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
             "hours": hours,
             "minutes": minutes,
             "seconds": seconds,
-        }    
+            }    
+    def update(self, instance, validated_data):
+        for field in ["name"]:
+            if field not in validated_data or not validated_data.get(field):
+                validated_data[field] = getattr(instance, field)
+        comments_data = validated_data.pop("comment", [])
+        instance = super().update(instance, validated_data)
 
+        for comment in comments_data:
+            if not comment.get("id"):  
+                Comment.objects.create(content_object=instance,
+                creator=self.context["request"].user,**comment)
+        return instance
 class ChatSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     receiver = UserSerializer(read_only=True)
