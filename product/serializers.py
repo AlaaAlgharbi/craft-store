@@ -207,8 +207,6 @@ class ChatSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     receiver = UserSerializer(read_only=True)
     receiver_username = serializers.CharField(write_only=True)
-  
-
     class Meta:
         model = Chat
         fields = ['id', 'sender', 'receiver', 'receiver_username', 'message', 'timestamp', 'is_read']
@@ -229,5 +227,4 @@ class ChatSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['timestamp'] = instance.timestamp.isoformat()
         return representation    
-    
     
