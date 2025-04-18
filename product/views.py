@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from .serializers import *
-from .models import CustomUser, Chat
+from .models import CustomUser, Chat, Notification
 from .permissions import (
     AuthorModifyOrReadOnly1,
     AuthorModifyOrReadOnly2,
@@ -29,8 +29,10 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class AllProductsView(APIView):
     def get(self, request, *args, **kwargs):
+
         products = Product.objects.all()
         auction_products = ProductAuction.objects.all()
+
 
         product_serializer = ProductSerializer(products, many=True)
         auction_product_serializer = ProductAuctionSerializer(
@@ -189,3 +191,30 @@ class SearchMessageView(generics.ListAPIView):
             return Response({"message": "No messages found"}, status=200)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+
+class NotificationDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(is_read=True)
+
+
+class UnreadNotificationCount(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({'unread_count': count})
