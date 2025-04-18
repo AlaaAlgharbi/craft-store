@@ -234,11 +234,6 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'notification_type', 'message', 'is_read', 'created_at', 'auction']
         read_only_fields = ['id', 'created_at']
     
-
-
-
-
-
 class OTPSendSerializer(serializers.Serializer):
     email = serializers.CharField(max_length=50)
 
