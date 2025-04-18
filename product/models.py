@@ -1,6 +1,5 @@
 from django.db import models
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey,GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_save, post_delete
@@ -25,6 +24,7 @@ class CustomUser(AbstractUser):
     username = models.CharField(max_length=50, blank=False, null=False, unique=True)
     first_name = models.CharField(max_length=50, blank=False, null=False)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
+    email=models.CharField(max_length=50, blank=False, null=False, unique=True)
     groups = models.ManyToManyField(
         "auth.Group",
         related_name="customuser_groups",
@@ -100,6 +100,9 @@ class Chat(models.Model):
     class Meta:
         ordering = ['-timestamp']
 
+class Verify(models.Model):
+    user= models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='verify')
+    token=models.CharField(max_length=6,default="",blank=True)
 
 @receiver(post_save, sender=ProductRating)
 def update_product_rate_on_save(sender, instance, created, **kwargs):
