@@ -4,6 +4,7 @@ from .views import *
 urlpatterns = [
     path("users/<str:username>", UserDetail.as_view(), name="user_detail"),
     path("users/", UserList.as_view(), name="user_list"),
+    # path("users/<str:username>", UserList.as_view(), name="user_list"),
     path("products/", AllProductsView.as_view(), name="Product_List"),
     path("create/products/", ProductCreate.as_view(), name="Product_Create"),
     path("create/auction/", ProductAuctionCreate.as_view(), name="ProductAuction_Create"),
@@ -16,6 +17,9 @@ urlpatterns = [
     path("chat/user/<int:user_id>/", UserChatListView.as_view(), name="user-chat-list"),
     path("search/<str:query>/", SearchAllView.as_view(), name="user-search"),
     path("chat/search/<str:message>/", ChatListCreateView.as_view(), name="message-search"),
+    path("notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
+    path("notifications/unread-count/", UnreadNotificationCount.as_view(), name="unread-count"),
 ]
 
 
