@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.db.models import Avg
+from django.utils import timezone
 
 category = [
     ("Accessories", "Accessories"),
@@ -117,3 +118,72 @@ def update_product_rate_on_delete(sender, instance, **kwargs):
     avg_rate = ProductRating.objects.filter(product=product).aggregate(avg=Avg('rating'))['avg'] or 0.0
     product.rate = avg_rate
     product.save()        
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('auction_end', 'Auction Ended'),
+        ('outbid', 'You Were Outbid'),
+        ('auction_won', 'You Won the Auction'),
+        ('auction_lost', 'You Lost the Auction'),
+    )
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    auction = models.ForeignKey(ProductAuction, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_notification_type_display()} - {self.user.username}"
+
+# Signal for when a bid is placed
+@receiver(post_save, sender=ProductAuction)
+def handle_auction_bid(sender, instance, created, **kwargs):
+    if not created:  # Only for updates
+        # Get the previous highest bidder
+        previous_bidder = instance.buyer
+        
+        # If there was a previous bidder and it's not the current bidder
+        if previous_bidder and previous_bidder != instance.buyer:
+            # Create outbid notification for the previous bidder
+            Notification.objects.create(
+                user=previous_bidder,
+                auction=instance,
+                notification_type='outbid',
+                message=f'You were outbid on {instance.name}. Current price: {instance.current_price}'
+            )
+
+# Signal for when auction ends
+@receiver(post_save, sender=ProductAuction)
+def handle_auction_end(sender, instance, created, **kwargs):
+    if not created:  # Only for updates
+        current_time = timezone.now()
+        
+        # Check if auction just ended
+        if instance.end_date <= current_time and not instance.notifications.filter(
+            notification_type='auction_end'
+        ).exists():
+            # Create notification for the winner
+            if instance.buyer:
+                Notification.objects.create(
+                    user=instance.buyer,
+                    auction=instance,
+                    notification_type='auction_won',
+                    message=f'Congratulations! You won the auction for {instance.name}'
+                )
+            
+            # Create notifications for all other bidders
+            for bidder in instance.bidders.all():
+                if bidder != instance.buyer:
+                    Notification.objects.create(
+                        user=bidder,
+                        auction=instance,
+                        notification_type='auction_lost',
+                        message=f'You lost the auction for {instance.name}'
+                    )        
+
+   
