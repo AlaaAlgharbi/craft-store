@@ -7,7 +7,7 @@ from django.utils import timezone
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["username","first_name","phone_number","image","password"]
+        fields = ["username","first_name","phone_number","image","password","email"]
         extra_kwargs = {
             "password": {"write_only": True}}
         
@@ -37,8 +37,8 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "creator", "content"]
-   
-   
+    
+    
 class ProductRatingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductRating
@@ -53,7 +53,6 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ["id","name","price","category","image","description","user_name","user_image","rate"]
         read_only_fields  = ["user_image","user_name","rate"]
         extra_kwargs = {
-            "category": {"write_only": True},
             "description": {"write_only": True},}
         
     def get_user_name(self, obj):
@@ -73,7 +72,6 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
                 "description","user_name","user_image","product_type","end_date","activate"]
         read_only_fields  = ["user_image","user_name","current_price","activate"]
         extra_kwargs = {
-            "category": {"write_only": True},
             "inital_price": {"write_only": True},
             "description": {"write_only": True},}
     def get_user_name(self, obj):
@@ -228,3 +226,19 @@ class ChatSerializer(serializers.ModelSerializer):
         representation['timestamp'] = instance.timestamp.isoformat()
         return representation    
     
+
+
+
+
+
+class OTPSendSerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=50)
+
+    # def validate_phone_number(self, value):
+    #     if not value.startswith("+"):
+    #         raise serializers.ValidationError("الرجاء إدخال رقم الهاتف بصيغة دولية (مثال: +1234567890).")
+    #     return value
+
+class OTPVerifySerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=50)
+    otp_code = serializers.CharField(max_length=10)
