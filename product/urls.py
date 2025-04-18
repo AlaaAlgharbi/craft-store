@@ -16,9 +16,15 @@ urlpatterns = [
     path("chat/user/<int:user_id>/", UserChatListView.as_view(), name="user-chat-list"),
     path("search/<str:query>/", SearchAllView.as_view(), name="user-search"),
     path("chat/search/<str:message>/", ChatListCreateView.as_view(), name="message-search"),
+    path('register/', UserRegistrationView.as_view(), name='register'),
+    path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
 ]
 
 
 urlpatterns += [
     path("auth/", include("rest_framework.urls")),
+    path(
+    "products/<str:category>/",
+    AllProductsView.as_view(),
+    name="posts-by-category",),
     ]
