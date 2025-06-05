@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     "product",
     "rest_framework",
     "corsheaders",
-    "twilio",
 ]
 
 MIDDLEWARE = [
