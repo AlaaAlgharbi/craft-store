@@ -30,6 +30,26 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+    
+class UserDetailSerializer(serializers.ModelSerializer):
+    products = serializers.SerializerMethodField()
+    auction_products = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username',"password", 'email', 'first_name', 'phone_number', 'image', 'products', 'auction_products']
+        read_only_fields = ['products', 'auction_products']
+        extra_kwargs = {
+            "password": {"write_only": True}}
+    def get_products(self, obj):
+        products = Product.objects.filter(user=obj)
+        return ProductSerializer(products, many=True).data
+
+    def get_auction_products(self, obj):
+        auction_products = ProductAuction.objects.filter(user=obj)
+        return ProductAuctionSerializer(auction_products, many=True).data    
+    
+    
 class CommentSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     creator = UserSerializer(read_only=True)
@@ -45,6 +65,7 @@ class ProductRatingSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "rating"]
         read_only_fields = ["user", "created_at"]   
     
+    
 class ProductSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
@@ -59,6 +80,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.user.username if obj.user else None
     def get_user_image(self, obj):
         return obj.user.image.url if obj.user and obj.user.image else None
+
 
 class ProductAuctionSerializer(serializers.ModelSerializer):
     end_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
@@ -135,6 +157,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                 Comment.objects.create(content_object=instance,
                 creator=self.context["request"].user,**comment)
         return instance
+    
+    
 class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     comment = CommentSerializer(many=True, required=False)
     end_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
@@ -144,7 +168,6 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     product_type= serializers.SerializerMethodField()
     countdown = serializers.SerializerMethodField()
     activate = serializers.SerializerMethodField()
-    
     class Meta :
         model = ProductAuction
         fields = ["name","current_price","inital_price","category","image","comment",
@@ -180,7 +203,6 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
         hours = time_left.seconds // 3600
         minutes = (time_left.seconds % 3600) // 60
         seconds = time_left.seconds % 60
-        
         return {
             "days": days,
             "hours": hours,
@@ -199,12 +221,12 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
                 Comment.objects.create(content_object=instance,
                 creator=self.context["request"].user,**comment)
         return instance
+    
+    
 class ChatSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     receiver = UserSerializer(read_only=True)
     receiver_username = serializers.CharField(write_only=True)
-  
-
     class Meta:
         model = Chat
         fields = ['id', 'sender', 'receiver', 'receiver_username', 'message', 'timestamp', 'is_read']
@@ -215,33 +237,29 @@ class ChatSerializer(serializers.ModelSerializer):
         try:
             receiver = CustomUser.objects.get(username=receiver_username)
         except CustomUser.DoesNotExist:
-            raise serializers.ValidationError({'receiver_username': 'User not found'})
-        
+            raise serializers.ValidationError({'receiver_username': 'User not found'})     
         validated_data['sender'] = self.context['request'].user
         validated_data['receiver'] = receiver
         return super().create(validated_data)
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['timestamp'] = instance.timestamp.isoformat()
         return representation    
     
-class NotificationSerializer(serializers.ModelSerializer):
-    auction = ProductAuctionSerializer(read_only=True)
     
+class NotificationSerializer(serializers.ModelSerializer):
+    auction = ProductAuctionSerializer(read_only=True)   
     class Meta:
         model = Notification
         fields = ['id', 'notification_type', 'message', 'is_read', 'created_at', 'auction']
         read_only_fields = ['id', 'created_at']
     
+    
 class OTPSendSerializer(serializers.Serializer):
     email = serializers.CharField(max_length=50)
 
-    # def validate_phone_number(self, value):
-    #     if not value.startswith("+"):
-    #         raise serializers.ValidationError("الرجاء إدخال رقم الهاتف بصيغة دولية (مثال: +1234567890).")
-    #     return value
 
 class OTPVerifySerializer(serializers.Serializer):
     email = serializers.CharField(max_length=50)
     otp_code = serializers.CharField(max_length=10)
+
