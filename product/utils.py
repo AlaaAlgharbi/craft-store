@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from .models import Verify,CustomUser
 
 def generate_otp():
-    return str(random.randint(100000, 999999))  # رمز من 6 أرقام
+    return str(random.randint(1000, 9999))  # رمز من 6 أرقام
 
 
 

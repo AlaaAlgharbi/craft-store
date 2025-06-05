@@ -25,7 +25,7 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "username"
     permission_classes = [AuthorModifyOrReadOnly2]
     queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserDetailSerializer
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -259,7 +259,7 @@ class UnreadNotificationCount(APIView):
 
     
 class UserRegistrationView(generics.CreateAPIView):
-    queryset = CustomUser.objects.all()
+    # queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
@@ -311,3 +311,6 @@ class VerifyRegistrationOTPView(generics.CreateAPIView):
                     "message": "الرمز المدخل غير صحيح. يرجى المحاولة مرة أخرى."
                 }, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ForgetPasswordView(generics.CreateAPIView):    
+    pass
