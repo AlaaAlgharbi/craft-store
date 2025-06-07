@@ -25,7 +25,6 @@ class CustomUser(AbstractUser):
     username = models.CharField(max_length=50, blank=False, null=False, unique=True)
     first_name = models.CharField(max_length=50, blank=False, null=False)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
-    wishlist = models.ManyToManyField('Product', related_name='wishlisted_by', blank=True)
     email=models.CharField(max_length=50, blank=False, null=False, unique=True)
     groups = models.ManyToManyField(
         "auth.Group",
