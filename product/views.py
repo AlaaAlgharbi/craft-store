@@ -53,38 +53,49 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
         self.perform_update(serializer)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 class AllProductsView(APIView):
     def get(self, request, *args, **kwargs):
-
         products = Product.objects.all()
         auction_products = ProductAuction.objects.all()
 
-
+        # Serialize data
         product_serializer = ProductSerializer(products, many=True)
-        auction_product_serializer = ProductAuctionSerializer(
-            auction_products, many=True
-        )
+        auction_product_serializer = ProductAuctionSerializer(auction_products, many=True)
 
-        # دمج البيانات
         combined_data = product_serializer.data + auction_product_serializer.data
 
-        # ترتيب المنتجات بناءً على ترتيب الإدخال باستخدام الحقل id
-        sorted_data = sorted(combined_data, key=lambda x: x["id"], reverse=True)
+        # الحصول على الفئة إذا تم تمريرها
         category = self.kwargs.get("category")
-        
+
         if category:
-            filtered_data = [item for item in sorted_data if item["category"] == category]
-            for item in sorted_data:
-                item.pop("category", None)
-                item.pop("id", None)
-            return Response(filtered_data)
-        for item in sorted_data:
-                item.pop("category", None)
-                item.pop("id", None)
-        # إرجاع البيانات مرتبة
-        return Response(sorted_data)
+            combined_data = [item for item in combined_data if item.get("category") == category]
+
+        # الحصول على قيم الأسعار من المعلمات
+        min_price = request.query_params.get("min_price")
+        max_price = request.query_params.get("max_price")
+        
+        if min_price and max_price:
+            min_price = float(min_price)
+            max_price = float(max_price)    
+            # تصفية المنتجات حسب نطاق السعر
+            combined_data = [
+                item for item in combined_data
+                if min_price <= item.get("price", 0) <= max_price or min_price <= item.get("current_price", 0) <= max_price 
+            ]
+            
+        only_products = request.query_params.get("only_products")
+        if only_products == "true":
+            combined_data = [item for item in combined_data if item.get("product_type") ]
+        # ترتيب المنتجات حسب تاريخ الإنشاء
+        sorted_data = sorted(combined_data, key=lambda x: x.get("created_at", ""), reverse=True)
+
+        # إزالة المفاتيح غير المطلوبة
+        cleaned_data = [
+            {key: value for key, value in item.items() if key not in ["category", "created_at"]}
+            for item in sorted_data
+        ]
+
+        return Response(cleaned_data)
 
 
 class ProductRatingCreateView(generics.CreateAPIView):
@@ -283,16 +294,17 @@ class UserRegistrationView(generics.CreateAPIView):
                     "message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."
                 }, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 class VerifyRegistrationOTPView(generics.CreateAPIView):
     serializer_class=OTPVerifySerializer
     permission_classes = [AllowAny]
-
+    
     def post(self, request, *args, **kwargs):
         serializer = OTPVerifySerializer(data=request.data) 
         if serializer.is_valid():
             otp_code = serializer.validated_data["otp_code"]
             email = serializer.validated_data["email"]
-            
             if verify_otp(email,otp_code):
                 try:
                     user = CustomUser.objects.get(email=email, is_active=False)
@@ -312,5 +324,24 @@ class VerifyRegistrationOTPView(generics.CreateAPIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class ForgetPasswordView(generics.CreateAPIView):    
-    pass
+
+class ForgetPasswordView(generics.CreateAPIView):
+    serializer_class = OTPSendSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        user = get_object_or_404(CustomUser, email=email)
+        
+        # محاولة إرسال رمز التحقق OTP للمستخدم
+        otp_status = send_otp(user)
+        if otp_status:
+            return Response(
+                {"message": "تم إرسال OTP بنجاح، يرجى التحقق من هاتفك."},
+                status=status.HTTP_201_CREATED
+            )
+        else:
+            return Response(
+                {"message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."},
+                status=status.HTTP_400_BAD_REQUEST
+            )

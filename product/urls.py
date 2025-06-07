@@ -22,6 +22,7 @@ urlpatterns = [
     path("notifications/unread-count/", UnreadNotificationCount.as_view(), name="unread-count"),
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
+    path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
 ]
 
 
