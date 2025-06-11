@@ -9,7 +9,6 @@ from .permissions import (
 )
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
-from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from django.db import models
 from rest_framework import status
@@ -345,3 +344,18 @@ class ForgetPasswordView(generics.CreateAPIView):
                 {"message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+
+class ResetPasswordView(generics.CreateAPIView):
+    serializer_class = ResetPasswordSerializer
+    permission_classes = [AllowAny]  
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        user =get_object_or_404(CustomUser,email=email)
+        user.set_password(password)
+        user.save()
+
+        return Response({"message": "تم تغيير كلمة السر بنجاح"},
+                        status=status.HTTP_200_OK)
