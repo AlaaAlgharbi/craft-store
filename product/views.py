@@ -18,8 +18,6 @@ class UserList(generics.ListAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
 
-
-
 class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "username"
     permission_classes = [AuthorModifyOrReadOnly2]
@@ -267,7 +265,7 @@ class UnreadNotificationCount(APIView):
         count = Notification.objects.filter(user=request.user, is_read=False).count()
         return Response({'unread_count': count})
 
-    
+
 class UserRegistrationView(generics.CreateAPIView):
     # queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
@@ -293,8 +291,8 @@ class UserRegistrationView(generics.CreateAPIView):
                     "message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."
                 }, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
+
 class VerifyRegistrationOTPView(generics.CreateAPIView):
     serializer_class=OTPVerifySerializer
     permission_classes = [AllowAny]
@@ -322,7 +320,7 @@ class VerifyRegistrationOTPView(generics.CreateAPIView):
                     "message": "الرمز المدخل غير صحيح. يرجى المحاولة مرة أخرى."
                 }, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 
 class ForgetPasswordView(generics.CreateAPIView):
     serializer_class = OTPSendSerializer
@@ -331,7 +329,7 @@ class ForgetPasswordView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
         user = get_object_or_404(CustomUser, email=email)
-        
+
         # محاولة إرسال رمز التحقق OTP للمستخدم
         otp_status = send_otp(user)
         if otp_status:
@@ -359,3 +357,46 @@ class ResetPasswordView(generics.CreateAPIView):
 
         return Response({"message": "تم تغيير كلمة السر بنجاح"},
                         status=status.HTTP_200_OK)
+
+
+class WishlistView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        wishlist = request.user.wishlist.all()
+        serializer = ProductSerializer(wishlist, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, product_id):
+        try:
+            product = Product.objects.get(id=product_id)
+            if product in request.user.wishlist.all():
+                return Response(
+                    {"message": "Product already in wishlist."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            request.user.wishlist.add(product)
+            return Response(
+                {"message": "Product added to wishlist."}, status=status.HTTP_200_OK
+            )
+        except Product.DoesNotExist:
+            return Response(
+                {"message": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    def delete(self, request, product_id):
+        try:
+            product = Product.objects.get(id=product_id)
+            if product not in request.user.wishlist.all():
+                return Response(
+                    {"message": "Product not in wishlist."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            request.user.wishlist.remove(product)
+            return Response(
+                {"message": "Product removed from wishlist."}, status=status.HTTP_200_OK
+            )
+        except Product.DoesNotExist:
+            return Response(
+                {"message": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )

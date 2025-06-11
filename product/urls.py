@@ -23,6 +23,8 @@ urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
     path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
+    path("wishlist/", WishlistView.as_view(), name="wishlist"),
+    path("wishlist/<int:product_id>/", WishlistView.as_view(), name="wishlist-product"),
     path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
 ]
 
