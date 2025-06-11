@@ -23,6 +23,7 @@ urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
     path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
 ]
 
 
