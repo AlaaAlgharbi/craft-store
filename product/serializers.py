@@ -263,3 +263,8 @@ class OTPVerifySerializer(serializers.Serializer):
     email = serializers.CharField(max_length=50)
     otp_code = serializers.CharField(max_length=10)
 
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=50)
+    password = serializers.CharField(max_length=50)
+
