@@ -24,9 +24,7 @@ urlpatterns = [
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
     path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
     path("wishlist/", WishlistListCreateView.as_view(), name="wishlist"),
-    path("delete_wishlist/", WishlistDestroyView.as_view(), name="wishlist-detail"),
-
-
+    path("wishlist/<int:product_id>/", WishlistDestroyView.as_view(), name="wishlist-product"),
 ]
 
 
