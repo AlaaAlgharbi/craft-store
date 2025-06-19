@@ -12,19 +12,21 @@ urlpatterns = [
     path("products/<int:product_id>/rate/", ProductRatingCreateView.as_view(), name="product-rate"),
     path("auction/<int:pk>", ProductAuctionDetails.as_view(), name="productAuction_detail"),
     path("delete_comment/<int:pk>", CommentDelete.as_view(), name="delete_comment"),
-    path("chat/", ChatListCreateView.as_view(), name="chat-list-create"),
-    path("chat/<int:pk>/", ChatDetailView.as_view(), name="chat-detail"),
-    path("chat/user/<int:user_id>/", UserChatListView.as_view(), name="user-chat-list"),
-    path("search/<str:query>/", SearchAllView.as_view(), name="user-search"),
-    path("chat/search/<str:message>/", ChatListCreateView.as_view(), name="message-search"),
+    path("chat/", ChatListCreateView.as_view(), name="chat-list-create"), #انشاء رسالة
+    path("chat/<int:pk>/", ChatDetailView.as_view(), name="chat-detail"),#عرض محتواه الرسالة
+    path("chat/user/<int:user_id>/", UserChatListView.as_view(), name="user-chat-list"),#محادثتي مع فلان
+    path("search/<str:query>/", SearchProductaAndUser.as_view(), name="user-search"),
+    path("chat/search/<str:message>/", ChatListCreateView.as_view(), name="message-search"),#البحث عن رسالة
     path("notifications/", NotificationListView.as_view(), name="notification-list"),
     path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
     path("notifications/unread-count/", UnreadNotificationCount.as_view(), name="unread-count"),
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
     path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
-    path("wishlist/", WishlistView.as_view(), name="wishlist"),
-    path("wishlist/<int:product_id>/", WishlistView.as_view(), name="wishlist-product"),
+    path("wishlist/", WishlistListCreateView.as_view(), name="wishlist"),
+    path("delete_wishlist/", WishlistDestroyView.as_view(), name="wishlist-detail"),
+
+
 ]
 
 
