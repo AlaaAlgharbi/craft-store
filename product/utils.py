@@ -30,7 +30,7 @@ def send_otp(user):
     
 def verify_otp(email, otp_code):
     user = get_object_or_404(CustomUser, email=email)
-    stored_otp=get_object_or_404(Verify, user=user)
+    stored_otp = Verify.objects.filter(user=user).order_by('-id').first()
     if stored_otp and stored_otp.token == otp_code:
         stored_otp.delete()
         return True
