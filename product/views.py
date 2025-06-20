@@ -7,16 +7,18 @@ from .permissions import (
     AuthorModifyOrReadOnly2,
     IsCommentCreator,
 )
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import models
 from rest_framework import status
 from .utils import send_otp, verify_otp
 
+
 class UserList(generics.ListAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
+
 
 class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "username"
@@ -25,31 +27,39 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserDetailSerializer
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop("partial", False)
         instance = self.get_object()
         new_email = request.data.get("email")  # استخراج البريد الجديد من الطلب
 
         if new_email and new_email != instance.email:
             # إذا تغيّر البريد، قم بإرسال رمز تحقق وجعل الحساب غير نشط
             instance.is_active = False
-            instance.email=new_email
+            instance.email = new_email
             instance.save()
             otp_status = send_otp(instance)
             if otp_status:
-                return Response({
-                    "message": "تم إرسال رمز التحقق إلى بريدك الإلكتروني الجديد. الحساب غير نشط حتى يتم التحقق."
-                }, status=status.HTTP_200_OK)
+                return Response(
+                    {
+                        "message": "تم إرسال رمز التحقق إلى بريدك الإلكتروني الجديد. الحساب غير نشط حتى يتم التحقق."
+                    },
+                    status=status.HTTP_200_OK,
+                )
             else:
-                return Response({
-                    "message": "فشل إرسال رمز التحقق. البريد الإلكتروني لم يتم تغييره."
-                }, status=status.HTTP_400_BAD_REQUEST)
-        
+                return Response(
+                    {
+                        "message": "فشل إرسال رمز التحقق. البريد الإلكتروني لم يتم تغييره."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # إذا لم يتم تغيير البريد الإلكتروني، قم بتحديث البيانات الأخرى فقط
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class AllProductsView(APIView):
     def get(self, request, *args, **kwargs):
         products = Product.objects.all()
@@ -57,7 +67,9 @@ class AllProductsView(APIView):
 
         # Serialize data
         product_serializer = ProductSerializer(products, many=True)
-        auction_product_serializer = ProductAuctionSerializer(auction_products, many=True)
+        auction_product_serializer = ProductAuctionSerializer(
+            auction_products, many=True
+        )
 
         combined_data = product_serializer.data + auction_product_serializer.data
 
@@ -65,30 +77,40 @@ class AllProductsView(APIView):
         category = self.kwargs.get("category")
 
         if category:
-            combined_data = [item for item in combined_data if item.get("category") == category]
+            combined_data = [
+                item for item in combined_data if item.get("category") == category
+            ]
 
         # الحصول على قيم الأسعار من المعلمات
         min_price = request.query_params.get("min_price")
         max_price = request.query_params.get("max_price")
-        
+
         if min_price and max_price:
             min_price = float(min_price)
-            max_price = float(max_price)    
+            max_price = float(max_price)
             # تصفية المنتجات حسب نطاق السعر
             combined_data = [
-                item for item in combined_data
-                if min_price <= item.get("price", 0) <= max_price or min_price <= item.get("current_price", 0) <= max_price 
+                item
+                for item in combined_data
+                if min_price <= item.get("price", 0) <= max_price
+                or min_price <= item.get("current_price", 0) <= max_price
             ]
-            
+
         only_products = request.query_params.get("only_products")
         if only_products == "true":
-            combined_data = [item for item in combined_data if item.get("product_type") ]
+            combined_data = [item for item in combined_data if item.get("product_type")]
         # ترتيب المنتجات حسب تاريخ الإنشاء
-        sorted_data = sorted(combined_data, key=lambda x: x.get("created_at", ""), reverse=True)
+        sorted_data = sorted(
+            combined_data, key=lambda x: x.get("created_at", ""), reverse=True
+        )
 
         # إزالة المفاتيح غير المطلوبة
         cleaned_data = [
-            {key: value for key, value in item.items() if key not in ["category", "created_at"]}
+            {
+                key: value
+                for key, value in item.items()
+                if key not in ["category", "created_at"]
+            }
             for item in sorted_data
         ]
 
@@ -259,7 +281,7 @@ class UnreadNotificationCount(APIView):
 
     def get(self, request):
         count = Notification.objects.filter(user=request.user, is_read=False).count()
-        return Response({'unread_count': count})
+        return Response({"unread_count": count})
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -277,44 +299,51 @@ class UserRegistrationView(generics.CreateAPIView):
             # إرسال OTP إلى ايميل  المدخل
             otp_status = send_otp(user)
             if otp_status:
-                return Response({
-                    "message": "تم إرسال OTP بنجاح، يرجى التحقق من هاتفك.",
-                }, status=status.HTTP_201_CREATED)
+                return Response(
+                    {
+                        "message": "تم إرسال OTP بنجاح، يرجى التحقق من هاتفك.",
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
             else:
                 # في حال فشل إرسال OTP، يُمكن إلغاء إنشاء الحساب
                 user.delete()
-                return Response({
-                    "message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyRegistrationOTPView(generics.CreateAPIView):
-    serializer_class=OTPVerifySerializer
+    serializer_class = OTPVerifySerializer
     permission_classes = [AllowAny]
-    
+
     def post(self, request, *args, **kwargs):
-        serializer = OTPVerifySerializer(data=request.data) 
+        serializer = OTPVerifySerializer(data=request.data)
         if serializer.is_valid():
             otp_code = serializer.validated_data["otp_code"]
             email = serializer.validated_data["email"]
-            if verify_otp(email,otp_code):
+            if verify_otp(email, otp_code):
                 try:
                     user = CustomUser.objects.get(email=email, is_active=False)
                     user.is_active = True
                     user.save()
                     # حذف البريد الإلكتروني من الجلسة بعد التحقق
-                    return Response({
-                        "message": "تم التحقق من OTP وتفعيل الحساب بنجاح!"
-                    }, status=status.HTTP_200_OK)
+                    return Response(
+                        {"message": "تم التحقق من OTP وتفعيل الحساب بنجاح!"},
+                        status=status.HTTP_200_OK,
+                    )
                 except CustomUser.DoesNotExist:
-                    return Response({
-                        "message": "لا يوجد حساب مرتبط بهذا البريد يحتاج للتفعيل."
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"message": "لا يوجد حساب مرتبط بهذا البريد يحتاج للتفعيل."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
             else:
-                return Response({
-                    "message": "الرمز المدخل غير صحيح. يرجى المحاولة مرة أخرى."
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"message": "الرمز المدخل غير صحيح. يرجى المحاولة مرة أخرى."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -323,7 +352,7 @@ class ForgetPasswordView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
+        email = request.data.get("email")
         user = get_object_or_404(CustomUser, email=email)
 
         # محاولة إرسال رمز التحقق OTP للمستخدم
@@ -331,12 +360,12 @@ class ForgetPasswordView(generics.CreateAPIView):
         if otp_status:
             return Response(
                 {"message": "تم إرسال OTP بنجاح، يرجى التحقق من هاتفك."},
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
         else:
             return Response(
                 {"message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
             
 
@@ -355,23 +384,24 @@ class ResetPasswordView(generics.CreateAPIView):
                         status=status.HTTP_200_OK)
 
 
-class WishlistView(APIView):
+        
+class WishlistListCreateView(generics.ListCreateAPIView):
+    serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        wishlist = request.user.wishlist.all()
-        serializer = ProductSerializer(wishlist, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return self.request.user.wishlist.all()
 
-    def post(self, request, product_id):
+    def post(self, request):
+        product_id = request.data.get("product_id")
         try:
-            product = Product.objects.get(id=product_id)
+            product=Product.objects.get(id=product_id)
             if product in request.user.wishlist.all():
                 return Response(
                     {"message": "Product already in wishlist."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            request.user.wishlist.add(product)
+            request.user.wishlist.add(product_id)
             return Response(
                 {"message": "Product added to wishlist."}, status=status.HTTP_200_OK
             )
@@ -380,7 +410,13 @@ class WishlistView(APIView):
                 {"message": "Product not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
-    def delete(self, request, product_id):
+
+
+class WishlistDestroyView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProductSerializer
+    def destroy(self, request, *args,**kwaargs):
+        product_id=request.data.get("product_id")
         try:
             product = Product.objects.get(id=product_id)
             if product not in request.user.wishlist.all():
