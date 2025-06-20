@@ -1,13 +1,22 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction , Chat , Comment, ProductRating, Notification
+from .models import CustomUser , Product , ProductAuction , Chat , Comment, UserRating, Notification
 from django.utils.timezone import now
 from django.utils import timezone
+
+
+class UserRatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserRating
+        fields = ["rater", "user", "rating"]
+        read_only_fields = ["rater","user"] 
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["username","first_name","phone_number","image","password","email"]
+        fields = ["username","first_name","phone_number","image","rate","password","email"]
+        read_only_fields = ['rate']
         extra_kwargs = {
             "password": {"write_only": True}}
         
@@ -29,26 +38,41 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
-    
-    
 class UserDetailSerializer(serializers.ModelSerializer):
     products = serializers.SerializerMethodField()
     auction_products = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username',"password", 'email', 'first_name', 'phone_number', 'image', 'products', 'auction_products']
+        fields = ['id', 'username', 'password', 'email', 'first_name', 
+                'phone_number', 'image', 'rate', 'products', 'auction_products']
         read_only_fields = ['products', 'auction_products']
-        extra_kwargs = {
-            "password": {"write_only": True}}
+        extra_kwargs = {"password": {"write_only": True}}
+
     def get_products(self, obj):
-        products = Product.objects.filter(user=obj)
+        products = Product.objects.filter(user=obj).order_by("-created_at")  # ترتيب من الأحدث للأقدم
         return ProductSerializer(products, many=True).data
 
     def get_auction_products(self, obj):
-        auction_products = ProductAuction.objects.filter(user=obj)
+        auction_products = ProductAuction.objects.filter(user=obj).order_by("-created_at")  # ترتيب من الأحدث للأقدم
         return ProductAuctionSerializer(auction_products, many=True).data    
-    
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        # دمج المنتجات والمزادات في قائمة واحدة مرتبة حسب التاريخ
+        all_products = representation.get("products", []) + representation.get("auction_products", [])
+        all_products.sort(key=lambda x: x["created_at"], reverse=True)  # ترتيب من الأحدث إلى الأقدم
+        # إزالة `created_at` من قائمة المنتجات
+        for product in all_products:
+            product.pop("created_at", None)
+        
+        # تحديث التمثيل ليحتوي على قائمة واحدة فقط
+        representation["all_products"] = all_products
+        representation.pop("products", None)
+        representation.pop("auction_products", None)
+        
+        return representation
     
 class CommentSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
@@ -57,22 +81,15 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "creator", "content"]
-    
-    
-class ProductRatingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductRating
-        fields = ["id", "user", "rating"]
-        read_only_fields = ["user", "created_at"]   
-    
+        
     
 class ProductSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     class Meta :
         model = Product
-        fields = ["name","price","created_at","category","image","description","user_name","user_image","rate"]
-        read_only_fields  = ["user_image","user_name","rate"]
+        fields = ["name","price","created_at","category","image","description","user_name","user_image"]
+        read_only_fields  = ["user_image","user_name"]
         extra_kwargs = {
             "description": {"write_only": True},}
         
@@ -113,16 +130,15 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
     
     
 class ProductDetailSerializer(serializers.ModelSerializer):
-    ratings = ProductRatingSerializer(many=True, read_only=True)
-    rate = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     comment = CommentSerializer(many=True, required=False)
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     class Meta : 
         model = Product
-        fields = ["name","price","category","image","description","comment","ratings",
-                "user_name","user_image","rate","created_at"]
-        read_only_fields = ["rate","created_at","user_name","user_image"]
+        fields = ["name","price","category","image","description","comment",
+                "user_name","user_image","created_at"]
+        read_only_fields = ["created_at","user_name","user_image"]
         extra_kwargs = {
             "name": {"required": False},
             "price": {"required": False},
@@ -132,18 +148,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return obj.user.username if obj.user else None
     def get_user_image(self, obj):
         return obj.user.image.url if obj.user and obj.user.image else None 
-    
-    def get_rate(self, obj):
-        ratings = obj.ratings.all()
-        if ratings.exists():
-            return sum(rating.rating for rating in ratings) / ratings.count()
-        return 0.0 
-    
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        # إزالة حقل ratings من النتيجة النهائية
-        representation.pop("ratings", None)
-        return representation
     
     def update(self, instance, validated_data):
         for field in ["name", "price", "category"]:
@@ -162,7 +166,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     comment = CommentSerializer(many=True, required=False)
     end_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
-    start_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     product_type= serializers.SerializerMethodField()
@@ -171,9 +175,9 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     class Meta :
         model = ProductAuction
         fields = ["name","current_price","inital_price","category","image","comment",
-                "description","buyer","user_name","user_image","product_type","end_date","start_date","activate","countdown"]
+                "description","buyer","user_name","user_image","product_type","end_date","created_at","activate","countdown"]
         read_only_fields  = ["current_price","inital_price","image",
-                "category","user_name","user_image","product_type","end_date","start_date","buyer","activate"]
+                "category","user_name","user_image","product_type","end_date","created_at","buyer","activate"]
         extra_kwargs = {
             "name": {"required": False}
             }    

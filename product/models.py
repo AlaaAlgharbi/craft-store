@@ -26,6 +26,7 @@ class CustomUser(AbstractUser):
     first_name = models.CharField(max_length=50, blank=False, null=False)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     email = models.CharField(max_length=50, blank=False, null=False, unique=True)
+    rate = models.FloatField(default=0.0, blank=True, null=True)
     wishlist = models.ManyToManyField(
         "Product", related_name="wishlisted_by", blank=True
     )
@@ -56,7 +57,6 @@ class Product(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     description = models.CharField(max_length=100, blank=True, null=True)
     price = models.IntegerField()
-    rate = models.FloatField(default=0.0, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
@@ -67,15 +67,13 @@ class Product(models.Model):
         return self.name
 
 
-class ProductRating(models.Model):
-    product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="ratings"
-    )
+class UserRating(models.Model):
+    rater = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="ratings")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     rating = models.PositiveIntegerField()
 
     class Meta:
-        unique_together = ("product", "user")
+        unique_together = ("rater", "user")
 
 
 class ProductAuction(models.Model):
@@ -126,30 +124,30 @@ class Verify(models.Model):
     token = models.CharField(max_length=6, default="", blank=True)
 
 
-@receiver(post_save, sender=ProductRating)
-def update_product_rate_on_save(sender, instance, created, **kwargs):
-    product = instance.product
+@receiver(post_save, sender=UserRating)
+def update_user_rate_on_save(sender, instance, created, **kwargs):
+    user = instance.user
     avg_rate = (
-        ProductRating.objects.filter(product=product).aggregate(avg=Avg("rating"))[
+        UserRating.objects.filter(user=user).aggregate(avg=Avg("rating"))[
             "avg"
         ]
         or 0.0
     )
-    product.rate = avg_rate
-    product.save()
+    user.rate = avg_rate
+    user.save()
 
 
-@receiver(post_delete, sender=ProductRating)
-def update_product_rate_on_delete(sender, instance, **kwargs):
-    product = instance.product
+@receiver(post_delete, sender=UserRating)
+def update_user_rate_on_delete(sender, instance, **kwargs):
+    user = instance.user
     avg_rate = (
-        ProductRating.objects.filter(product=product).aggregate(avg=Avg("rating"))[
+        UserRating.objects.filter(user=user).aggregate(avg=Avg("rating"))[
             "avg"
         ]
         or 0.0
     )
-    product.rate = avg_rate
-    product.save()
+    user.rate = avg_rate
+    user.save()
 
 
 class Notification(models.Model):

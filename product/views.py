@@ -94,29 +94,24 @@ class AllProductsView(APIView):
 
         return Response(cleaned_data)
 
+class UserRatingCreateView(generics.CreateAPIView):
+    serializer_class = UserRatingSerializer
 
-class ProductRatingCreateView(generics.CreateAPIView):
-
-    serializer_class = ProductRatingSerializer
-
-    def post(self, request, product_id, *args, **kwargs):
-        product = get_object_or_404(Product, id=product_id)
-
+    def post(self, request, *args, **kwargs):
+        user = get_object_or_404(CustomUser, username=kwargs.get("username"))
         rating_value = request.data.get("rating")
 
-        rating_instance, created = ProductRating.objects.update_or_create(
-            product=product,
-            user=request.user,
-            defaults={
-                "rating": rating_value,
-            },
+        rating_instance, created = UserRating.objects.update_or_create(
+            user=user,
+            rater=request.user,
+            defaults={"rating": rating_value},
         )
 
-        serializer = ProductRatingSerializer(rating_instance)
+        serializer = UserRatingSerializer(rating_instance)
         return Response(serializer.data, status=201 if created else 200)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(rater=self.request.user)
 
 
 class ProductCreate(generics.CreateAPIView):
@@ -161,7 +156,8 @@ class ChatListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return Chat.objects.filter(models.Q(sender=user)).order_by("-timestamp")
+        # return Chat.objects.filter(models.Q(sender=user)).order_by("-timestamp")
+        return Chat.objects.filter(models.Q(sender=user) | models.Q(receiver=user)).order_by("-timestamp")
 
 
 class ChatDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -187,7 +183,7 @@ class UserChatListView(generics.ListAPIView):
 
 
 class SearchAllView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         search_query = self.kwargs.get("query", "").lower()
