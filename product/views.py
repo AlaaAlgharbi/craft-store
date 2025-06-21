@@ -13,7 +13,8 @@ from rest_framework.views import APIView
 from django.db import models
 from rest_framework import status
 from .utils import send_otp, verify_otp
-
+from .image_search_utils import search_similar_products
+from django.db.models import Q
 
 class UserList(generics.ListAPIView):
     queryset = CustomUser.objects.all()
@@ -204,37 +205,66 @@ class UserChatListView(generics.ListAPIView):
         ).order_by("-timestamp")
 
 
-class SearchAllView(generics.ListAPIView):
+class SearchAllView(APIView):
     permission_classes = [AllowAny]
 
-    def get_queryset(self):
-        search_query = self.kwargs.get("query", "").lower()
+    def get(self, request, *args, **kwargs):
+        """
+        يسمح البحث النصي عبر query parameter
+        Example: GET /api/hybrid-search/?query=سماعة
+        """
+        text_query = request.query_params.get('query', '').strip().lower()
+        text_results = []
+        if text_query:
+            # البحث النصي في المنتجات
+            products = Product.objects.filter(Q(name__icontains=text_query))
+            auction_products = ProductAuction.objects.filter(Q(name__icontains=text_query))
+            users = CustomUser.objects.filter(Q(username__icontains=text_query)
+                                        | models.Q(first_name__icontains=text_query))
+            # استخدام serializers لإرجاع البيانات
+            prod_ser = ProductSerializer(products, many=True).data
+            auc_ser = ProductAuctionSerializer(auction_products, many=True).data
+            user_ser=UserSerializer(users,many=True).data
+            # يمكنك إضافة مفتاح لتحديد نوع النتيجة (product أو auction)
+            for item in prod_ser:
+                item['type'] = 'product'
+                text_results.append(item)
+            for item in auc_ser:
+                item['type'] = 'auction'
+                text_results.append(item)
+            for item in user_ser:
+                item['type'] = 'user'
+                text_results.append(item)
+        
+        return Response({
+            "text_search_results": text_results
+        })
 
-        # Search in users
-        users = CustomUser.objects.filter(
-            models.Q(username__icontains=search_query)
-            | models.Q(first_name__icontains=search_query)
-        ).exclude(id=self.request.user.id)
+    def post(self, request, *args, **kwargs):
+        image_file = request.FILES.get('image', None)
+        if not image_file:
+            return Response({"error": "يجب إرسال صورة للبحث."}, status=400)
 
-        # Search in products
-        products = Product.objects.filter(models.Q(name__icontains=search_query))
+        try:
+            image_results = search_similar_products(image_file, distance_threshold=55)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
-        # Combine results with type information
-        results = []
-        for user in users:
-            results.append({"type": "user", "data": UserSerializer(user).data})
+        serialized_results = []
+        for obj in image_results:
+            if isinstance(obj, Product):
+                data = ProductSerializer(obj).data
+                data["type"] = "product"
+            elif isinstance(obj, ProductAuction):
+                data = ProductAuctionSerializer(obj).data
+                data["type"] = "auction"    
+            else:
+                continue
+            serialized_results.append(data)
 
-        for product in products:
-            results.append({"type": "product", "data": ProductSerializer(product).data})
-
-        return results
-
-    def list(self, request, *args, **kwargs):
-        results = self.get_queryset()
-        if not results:
-            return Response({"message": "No results found"}, status=200)
-        return Response(results)
-
+        return Response({
+            "image_search_results": serialized_results
+        })
 
 class SearchMessageView(generics.ListAPIView):
     serializer_class = ChatSerializer
