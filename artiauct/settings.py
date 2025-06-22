@@ -121,6 +121,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'photos')
 MEDIA_URL = '/photos/'
 
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_PATH = BASE_DIR.parent / "model"  
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 

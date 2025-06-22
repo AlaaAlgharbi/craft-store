@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import CustomUser , Product , ProductAuction , Chat , Comment, UserRating, Notification
 from django.utils.timezone import now
 from django.utils import timezone
-
+from .sentiment_analysis_utils import get_sentiment
 
 class UserRatingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -76,13 +76,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
     
 class CommentSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
-    creator = UserSerializer(read_only=True)
+    creator = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
         fields = ["id", "creator", "content"]
-        
-    
+    def get_creator(self,obj):
+        return obj.creator.username if obj.creator else None
 class ProductSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
@@ -136,9 +136,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     user_image = serializers.SerializerMethodField()
     class Meta : 
         model = Product
-        fields = ["name","price","category","image","description","comment",
+        fields = ["name","price","category","image","description","comment","comment_rate",
                 "user_name","user_image","created_at"]
-        read_only_fields = ["created_at","user_name","user_image"]
+        read_only_fields = ["created_at","user_name","user_image","comment_rate"]
         extra_kwargs = {
             "name": {"required": False},
             "price": {"required": False},
@@ -157,9 +157,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
 
         for comment in comments_data:
-            if not comment.get("id"):  
+            if not comment.get("id"): 
+                comment_rate=get_sentiment(comment.get("content"))
                 Comment.objects.create(content_object=instance,
-                creator=self.context["request"].user,**comment)
+                creator=self.context["request"].user,rate=comment_rate,**comment)
         return instance
     
     
@@ -168,21 +169,25 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     end_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     user_name = serializers.SerializerMethodField()
+    buyer = serializers.SerializerMethodField()
     user_image = serializers.SerializerMethodField()
     product_type= serializers.SerializerMethodField()
     countdown = serializers.SerializerMethodField()
     activate = serializers.SerializerMethodField()
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","inital_price","category","image","comment",
+        fields = ["name","current_price","inital_price","category","image","comment","comment_rate",
                 "description","buyer","user_name","user_image","product_type","end_date","created_at","activate","countdown"]
         read_only_fields  = ["current_price","inital_price","image",
-                "category","user_name","user_image","product_type","end_date","created_at","buyer","activate"]
+                "category","user_name","user_image","product_type","end_date","created_at","buyer","activate","comment_rate"]
         extra_kwargs = {
             "name": {"required": False}
             }    
     def get_user_name(self, obj):
         return obj.user.username if obj.user else None
+    
+    def get_buyer(self, obj):
+        return obj.buyer.username if obj.buyer else None
     
     def get_user_image(self, obj):
         return obj.user.image.url if obj.user and obj.user.image else None
@@ -221,9 +226,10 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
 
         for comment in comments_data:
-            if not comment.get("id"):  
+            if not comment.get("id"): 
+                comment_rate=get_sentiment(comment.get("content"))
                 Comment.objects.create(content_object=instance,
-                creator=self.context["request"].user,**comment)
+                creator=self.context["request"].user,rate=comment_rate,**comment)
         return instance
     
     
