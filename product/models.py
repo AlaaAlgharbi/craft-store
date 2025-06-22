@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import AbstractUser
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete,pre_save
 from django.dispatch import receiver
 from django.db.models import Avg
 from django.utils import timezone
@@ -48,7 +48,7 @@ class Comment(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
-
+    rate = models.FloatField(default=0.0, blank=True, null=True)
     def __str__(self):
         return self.content
 
@@ -62,7 +62,7 @@ class Product(models.Model):
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False)
     comment = GenericRelation(Comment)
-
+    comment_rate = models.FloatField(default=0.0, blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -85,19 +85,32 @@ class ProductAuction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=50, choices=category)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="auctions_created")
     comment = GenericRelation(Comment)
+    comment_rate = models.FloatField(default=0.0, blank=True, null=True)
     buyer = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
-        related_name="buyer",
+        related_name="auctions_won",
         blank=True,
         null=True,
     )
-
     def __str__(self):
         return self.name
 
+
+@receiver([post_save, post_delete], sender=Comment)
+def update_comment_rate(sender, instance, **kwargs):
+    # الحصول على الكائن المرتبط بالتعليق (Product أو ProductAuction)
+    content_object = instance.content_object
+    # التأكد من أن الكائن لديه الحقل comment_rate (بمعناه أنه من النماذج التي تريد تحديثها)
+    if hasattr(content_object, "comment_rate"):
+        # حساب المتوسط لتقييمات التعليقات المرتبطة
+        aggregate_result = content_object.comment.aggregate(avg_rate=Avg("rate"))
+        avg_rate = aggregate_result["avg_rate"] or 0.0
+        # تحديث الحقل comment_rate وحفظ الكائن
+        content_object.comment_rate = avg_rate
+        content_object.save()
 
 class Chat(models.Model):
     sender = models.ForeignKey(
@@ -155,7 +168,6 @@ class Notification(models.Model):
         ("auction_end", "Auction Ended"),
         ("outbid", "You Were Outbid"),
         ("auction_won", "You Won the Auction"),
-        ("auction_lost", "You Lost the Auction"),
     )
 
     user = models.ForeignKey(
@@ -175,53 +187,26 @@ class Notification(models.Model):
     def __str__(self):
         return f"{self.get_notification_type_display()} - {self.user.username}"
 
+@receiver(pre_save, sender=ProductAuction)
+def cache_previous_buyer(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            previous = ProductAuction.objects.get(pk=instance.pk)
+            instance._previous_buyer = previous.buyer
+        except ProductAuction.DoesNotExist:
+            instance._previous_buyer = None
 
 # Signal for when a bid is placed
 @receiver(post_save, sender=ProductAuction)
-def handle_auction_bid(sender, instance, created, **kwargs):
-    if not created:  # Only for updates
-        # Get the previous highest bidder
-        previous_bidder = instance.buyer
+def notify_previous_bidder(sender, instance, created, **kwargs):
+    if not created and hasattr(instance, '_previous_buyer'):
+        previous_buyer = instance._previous_buyer
+        current_buyer = instance.buyer
 
-        # If there was a previous bidder and it's not the current bidder
-        if previous_bidder and previous_bidder != instance.buyer:
-            # Create outbid notification for the previous bidder
+        if previous_buyer and previous_buyer != current_buyer:
             Notification.objects.create(
-                user=previous_bidder,
+                user=previous_buyer,
                 auction=instance,
                 notification_type="outbid",
-                message=f"You were outbid on {instance.name}. Current price: {instance.current_price}",
-            )
+                message=f"You were outbid on {instance.name}. Current price: {instance.current_price}", )
 
-
-# Signal for when auction ends
-@receiver(post_save, sender=ProductAuction)
-def handle_auction_end(sender, instance, created, **kwargs):
-    if not created:  # Only for updates
-        current_time = timezone.now()
-
-        # Check if auction just ended
-        if (
-            instance.end_date <= current_time
-            and not instance.notifications.filter(
-                notification_type="auction_end"
-            ).exists()
-        ):
-            # Create notification for the winner
-            if instance.buyer:
-                Notification.objects.create(
-                    user=instance.buyer,
-                    auction=instance,
-                    notification_type="auction_won",
-                    message=f"Congratulations! You won the auction for {instance.name}",
-                )
-
-            # Create notifications for all other bidders
-            for bidder in instance.bidders.all():
-                if bidder != instance.buyer:
-                    Notification.objects.create(
-                        user=bidder,
-                        auction=instance,
-                        notification_type="auction_lost",
-                        message=f"You lost the auction for {instance.name}",
-                    )
