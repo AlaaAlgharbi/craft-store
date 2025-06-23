@@ -107,11 +107,11 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
     activate = serializers.SerializerMethodField()
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","created_at","inital_price","category","image",
+        fields = ["name","current_price","created_at","initial_price","category","image",
                 "description","user_name","user_image","product_type","end_date","activate"]
         read_only_fields  = ["user_image","user_name","current_price","activate"]
         extra_kwargs = {
-            "inital_price": {"write_only": True},
+            "initial_price": {"write_only": True},
             "description": {"write_only": True},}
     def get_user_name(self, obj):
         return obj.user.username if obj.user else None
@@ -125,7 +125,7 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # تحقق من أن الحقل current_price فارغ
         if not data.get("current_price"):
-            data["current_price"] = data.get("inital_price")  # تعيين قيمة initial_price كافتراضية
+            data["current_price"] = data.get("initial_price")  # تعيين قيمة initial_price كافتراضية
         return data
     
     
@@ -176,9 +176,9 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     activate = serializers.SerializerMethodField()
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","inital_price","category","image","comment","comment_rate",
+        fields = ["name","current_price","initial_price","category","image","comment","comment_rate",
                 "description","buyer","user_name","user_image","product_type","end_date","created_at","activate","countdown"]
-        read_only_fields  = ["current_price","inital_price","image",
+        read_only_fields  = ["current_price","initial_price","image",
                 "category","user_name","user_image","product_type","end_date","created_at","buyer","activate","comment_rate"]
         extra_kwargs = {
             "name": {"required": False}
