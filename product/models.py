@@ -25,7 +25,7 @@ class CustomUser(AbstractUser):
     username = models.CharField(max_length=50, blank=False, null=False, unique=True)
     first_name = models.CharField(max_length=50, blank=False, null=False)
     image = models.ImageField(null=True, blank=True, upload_to="photos")
-    email = models.CharField(max_length=50, blank=False, null=False, unique=True)
+    email = models.EmailField(max_length=50, blank=False, null=False, unique=True)
     rate = models.FloatField(default=0.0, blank=True, null=True)
     wishlist = models.ManyToManyField(
         "Product", related_name="wishlisted_by", blank=True
@@ -79,7 +79,7 @@ class UserRating(models.Model):
 class ProductAuction(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     description = models.CharField(max_length=100, blank=True, null=True)
-    inital_price = models.IntegerField()
+    initial_price = models.IntegerField()
     current_price = models.IntegerField()
     end_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
