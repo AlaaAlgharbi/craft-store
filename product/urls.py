@@ -1,5 +1,6 @@
 from django.urls import path, include
 from .views import *
+from rest_framework.authtoken import views
 
 urlpatterns = [
     path("users/<str:username>", UserDetail.as_view(), name="user_detail"),
@@ -29,6 +30,7 @@ urlpatterns = [
 
 urlpatterns += [
     path("auth/", include("rest_framework.urls")),
+    path("token-auth/", views.obtain_auth_token),
     path(
     "products/<str:category>/",
     AllProductsView.as_view(),
