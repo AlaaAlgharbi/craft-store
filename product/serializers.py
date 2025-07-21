@@ -278,3 +278,25 @@ class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.CharField(max_length=50)
     password = serializers.CharField(max_length=50)
 
+class AuctionBidSerializer(serializers.ModelSerializer):
+    bid_amount = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = ProductAuction
+        fields = ["bid_amount"]
+    
+    def validate_bid_amount(self, value):
+        auction = self.instance
+        now = timezone.now()
+        if now >= auction.end_date:
+            raise serializers.ValidationError("The auction is end")
+        if value <= auction.current_price:
+            raise serializers.ValidationError("this price is less than curent price")
+        return value
+
+    def update(self, instance, validated_data):
+        user = self.context["request"].user
+        instance.current_price = validated_data["bid_amount"]
+        instance.buyer = user
+        instance.save()
+        return instance

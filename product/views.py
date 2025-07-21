@@ -173,6 +173,13 @@ class ProductAuctionDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductAuctionDetailsSerializer
 
 
+class AuctionBidView(generics.UpdateAPIView):
+    queryset = ProductAuction.objects.all()
+    serializer_class = AuctionBidSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "pk"
+
+
 class ChatListCreateView(generics.ListCreateAPIView):
     serializer_class = ChatSerializer
     permission_classes = [IsAuthenticated]
