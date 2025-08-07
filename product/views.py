@@ -15,7 +15,7 @@ from rest_framework import status
 from .utils import send_otp, verify_otp
 from .image_search_utils import search_similar_products
 from django.db.models import Q
-
+from django.db import transaction
 class UserList(generics.ListAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
@@ -173,11 +173,27 @@ class ProductAuctionDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductAuctionDetailsSerializer
 
 
+# class AuctionBidView(generics.UpdateAPIView):
+#     queryset = ProductAuction.objects.all()
+#     serializer_class = AuctionBidSerializer
+#     permission_classes = [IsAuthenticated]
+#     lookup_field = "pk"
+
 class AuctionBidView(generics.UpdateAPIView):
     queryset = ProductAuction.objects.all()
     serializer_class = AuctionBidSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = "pk"
+
+    def update(self, request, *args, **kwargs):
+        auction_id = kwargs.get(self.lookup_field)
+        with transaction.atomic():
+            # Lock the auction row for this transaction
+            auction = ProductAuction.objects.select_for_update().get(pk=auction_id)
+            serializer = self.get_serializer(auction, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
 
 
 class ChatListCreateView(generics.ListCreateAPIView):
