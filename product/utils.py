@@ -18,7 +18,7 @@ def send_otp(user):
     
     subject = 'رمز التحقق الخاص بك'
     message = f'رمز التحقق الخاص بك هو: {otp}'
-    from_email = 'algarbealaa@gmail.com'
+    from_email = 'artiauct@gmail.com'
     recipient_list = [user.email]
     try:
         send_mail(subject, message, from_email, recipient_list)
