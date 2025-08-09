@@ -19,7 +19,11 @@ from transformers import AutoTokenizer, AutoModel
 model_id = "AlaaAlgharbi/craft-model"
 hf_token = os.getenv("HF_TOKEN")  # تأكد أنك خزّنته في البيئة
 
-tokenizer = AutoTokenizer.from_pretrained(model_id, use_auth_token=hf_token)
+tokenizer = AutoTokenizer.from_pretrained(
+    "AlaaAlgharbi/craft-model",
+    use_auth_token=os.getenv("HF_TOKEN")
+)
+
 model = AutoModel.from_pretrained(model_id, use_auth_token=hf_token)
 
 def get_sentiment(comment):
