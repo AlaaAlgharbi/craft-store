@@ -18,23 +18,23 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 # tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
-model_path = settings.MODEL_PATH
-tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
-model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
+# model_path = settings.MODEL_PATH
+# tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+# model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
 
-# model_id = "AlaaAlgharbi/craft-model"
-# hf_token = os.getenv("HF_TOKEN")  # تأكد أنك خزّنته في البيئة
+model_id = "AlaaAlgharbi/craft-model"
+hf_token = os.getenv("HF_TOKEN")  # تأكد أنك خزّنته في البيئة
 
-# # تحميل الـ tokenizer والنموذج من هبنج فيس (أو من المسار المحلي كما في التعليقات أعلاه)
-# tokenizer = AutoTokenizer.from_pretrained(
-#     model_id,
-#     use_auth_token=hf_token
-# )
+# تحميل الـ tokenizer والنموذج من هبنج فيس (أو من المسار المحلي كما في التعليقات أعلاه)
+tokenizer = AutoTokenizer.from_pretrained(
+    model_id,
+    use_auth_token=hf_token
+)
 
-# model = AutoModelForSequenceClassification.from_pretrained(
-#     model_id,
-#     use_auth_token=hf_token
-# )
+model = AutoModelForSequenceClassification.from_pretrained(
+    model_id,
+    use_auth_token=hf_token
+)
 
 # تهيئة النموذج للوضع التنبؤي فقط
 model.eval()
