@@ -67,7 +67,19 @@ def build_faiss_index():
     return index, all_items
 
 # بناء الفهرس عند بدء تشغيل التطبيق وحفظه في متغيرات عالمية لتجنب إعادة البناء في كل طلب.
-FAISS_INDEX, ALL_ITEMS = build_faiss_index()
+FAISS_INDEX = None
+ALL_ITEMS = []
+
+def get_faiss_index():
+    global FAISS_INDEX, ALL_ITEMS
+    if FAISS_INDEX is None or not ALL_ITEMS:
+        try:
+            FAISS_INDEX, ALL_ITEMS = build_faiss_index()
+        except ValueError as e:
+            print(f"⚠️ FAISS index error: {e}")
+            FAISS_INDEX, ALL_ITEMS = None, []
+    return FAISS_INDEX, ALL_ITEMS
+
 
 def search_similar_products(query_image, distance_threshold=55):
     """
@@ -75,16 +87,18 @@ def search_similar_products(query_image, distance_threshold=55):
     التي تكون مسافتها أقل من العتبة المحددة.
     تُرجع الدالة النتائج على شكل قائمة من الكائنات (Product أو ProductAuction).
     """
-    query_embedding = get_image_embedding(query_image)
-    # تحويل المتجه إلى نوع float32
-    query_embedding = np.array([query_embedding]).astype('float32')
-    D, I = FAISS_INDEX.search(query_embedding, len(ALL_ITEMS))
+    index, items = get_faiss_index()
+    if not index:
+        print("⚠️ لا يوجد فهرس للبحث حاليًا.")
+        return []
     
-    result_items = []
-    for dist, idx in zip(D[0], I[0]):
-        if dist < distance_threshold:
-            result_items.append(ALL_ITEMS[idx])
+    query_embedding = get_image_embedding(query_image)
+    query_embedding = np.array([query_embedding]).astype('float32')
+    D, I = index.search(query_embedding, len(items))
+    
+    result_items = [items[idx] for dist, idx in zip(D[0], I[0]) if dist < distance_threshold]
     return result_items
+
 
 # ربط إعادة بناء الفهرس باستخدام Django signals عند حفظ أو تعديل الكائنات
 @receiver(post_save, sender=Product)
@@ -95,4 +109,8 @@ def rebuild_faiss_index(sender, instance, **kwargs):
     أو ProductAuction.
     """
     global FAISS_INDEX, ALL_ITEMS
-    FAISS_INDEX, ALL_ITEMS = build_faiss_index()
+    try:
+        FAISS_INDEX, ALL_ITEMS = build_faiss_index()
+    except ValueError as e:
+        print(f"⚠️ FAISS index rebuild error: {e}")
+        FAISS_INDEX, ALL_ITEMS = None, []

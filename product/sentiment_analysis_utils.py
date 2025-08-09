@@ -4,15 +4,23 @@ import torch
 from django.conf import settings
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-
+from transformers import AutoTokenizer, AutoModel
 
 # MODEL_NAME = "nlptown/bert-base-multilingual-uncased-sentiment"
 # tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
-model_path = settings.MODEL_PATH
-tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
-model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
+# model_path = settings.MODEL_PATH
+# tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+# model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
+
+
+
+model_id = "AlaaAlgharbi/craft-model"
+hf_token = os.getenv("HF_TOKEN")  # تأكد أنك خزّنته في البيئة
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, use_auth_token=hf_token)
+model = AutoModel.from_pretrained(model_id, use_auth_token=hf_token)
 
 def get_sentiment(comment):
     # تجهيز المدخلات (تقليم النص وتعبئته بأن تكون الطول ثابت)
