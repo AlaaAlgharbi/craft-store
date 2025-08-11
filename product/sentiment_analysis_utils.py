@@ -26,16 +26,8 @@ model_id = "AlaaAlgharbi/craft-model"
 hf_token = os.getenv("HF_TOKEN")  # تأكد أنك خزّنته في البيئة
 
 # تحميل الـ tokenizer والنموذج من هبنج فيس (أو من المسار المحلي كما في التعليقات أعلاه)
-tokenizer = AutoTokenizer.from_pretrained(
-    model_id,
-    use_auth_token=hf_token
-)
-
-model = AutoModelForSequenceClassification.from_pretrained(
-    model_id,
-    use_auth_token=hf_token
-)
-
+tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_token)
+model = AutoModelForSequenceClassification.from_pretrained(model_id, token=hf_token)
 # تهيئة النموذج للوضع التنبؤي فقط
 model.eval()
 

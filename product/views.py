@@ -263,39 +263,39 @@ class SearchAllView(APIView):
             "text_search_results": text_results
         })
 
-    def post(self, request, *args, **kwargs):
-        image_file = request.FILES.get('image')
-        if not image_file:
-            return Response({"error": "يجب إرسال صورة للبحث."}, status=400)
+    # def post(self, request, *args, **kwargs):
+    #     image_file = request.FILES.get('image')
+    #     if not image_file:
+    #         return Response({"error": "يجب إرسال صورة للبحث."}, status=400)
 
-        try:
-            image_results = search_similar_products(image_file, distance_threshold=55)
-        except ValueError as e:
-            # مثلاً إذا ما فيه فهرس أو قاعدة البيانات فاضية
-            return Response({"error": str(e)}, status=400)
-        except Exception as e:
-            # أي خطأ غير متوقع
-            return Response({"error": f"حدث خطأ غير متوقع: {e}"}, status=500)
+    #     try:
+    #         image_results = search_similar_products(image_file, distance_threshold=55)
+    #     except ValueError as e:
+    #         # مثلاً إذا ما فيه فهرس أو قاعدة البيانات فاضية
+    #         return Response({"error": str(e)}, status=400)
+    #     except Exception as e:
+    #         # أي خطأ غير متوقع
+    #         return Response({"error": f"حدث خطأ غير متوقع: {e}"}, status=500)
 
-        if not image_results:
-            return Response({
-                "image_search_results": [],
-                "message": "لا توجد نتائج مطابقة حالياً"
-            }, status=200)
+    #     if not image_results:
+    #         return Response({
+    #             "image_search_results": [],
+    #             "message": "لا توجد نتائج مطابقة حالياً"
+    #         }, status=200)
 
-        serialized_results = []
-        for obj in image_results:
-            if isinstance(obj, Product):
-                data = ProductSerializer(obj).data
-                data["type"] = "product"
-            elif isinstance(obj, ProductAuction):
-                data = ProductAuctionSerializer(obj).data
-                data["type"] = "auction"
-            else:
-                continue
-            serialized_results.append(data)
+    #     serialized_results = []
+    #     for obj in image_results:
+    #         if isinstance(obj, Product):
+    #             data = ProductSerializer(obj).data
+    #             data["type"] = "product"
+    #         elif isinstance(obj, ProductAuction):
+    #             data = ProductAuctionSerializer(obj).data
+    #             data["type"] = "auction"
+    #         else:
+    #             continue
+    #         serialized_results.append(data)
 
-        return Response({"image_search_results": serialized_results})
+    #     return Response({"image_search_results": serialized_results})
 
 class SearchMessageView(generics.ListAPIView):
     serializer_class = ChatSerializer
