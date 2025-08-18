@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from django.db import models
 from rest_framework import status
 from .utils import send_otp, verify_otp
-from .image_search_utils import search_similar_products
+# from .image_search_utils import search_similar_products
 from django.db.models import Q
 from django.db import transaction
 class UserList(generics.ListAPIView):

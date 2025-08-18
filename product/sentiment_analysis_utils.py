@@ -1,13 +1,3 @@
-# من الأفضل استخدام نموذج التصنيف مباشرة بدل AutoModel لتبسيط الكود وتقليل التعقيد
-# والحفاظ على نفس السلوك مع logits.
-# MODEL_NAME = "nlptown/bert-base-multilingual-uncased-sentiment"
-# tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-# model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-
-# model_path = settings.MODEL_PATH
-# tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
-# model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
-
 from django.conf import settings
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"  # الإبقاء عليها كما وضعتها
