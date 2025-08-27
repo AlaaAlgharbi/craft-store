@@ -16,8 +16,8 @@ def send_otp(user):
     token=otp
 )
     
-    subject = 'رمز التحقق الخاص بك'
-    message = f'رمز التحقق الخاص بك هو: {otp}'
+    subject = 'Your verificationHere code'
+    message = f'Your verification code is: {otp}'
     from_email = 'artiauct@gmail.com'
     recipient_list = [user.email]
     try:

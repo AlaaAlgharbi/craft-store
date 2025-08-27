@@ -1,6 +1,6 @@
 from email.mime import image
 from rest_framework import serializers
-from .models import CustomUser , Product , ProductAuction , Chat , Comment, UserRating, Notification
+from .models import CustomUser , Product , ProductAuction , Chat , Comment, UserRating, Notification,TransferRequest
 from django.utils.timezone import now
 from django.utils import timezone
 from .sentiment_analysis_utils import get_sentiment
@@ -38,14 +38,17 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+    
+    
+    
 class UserDetailSerializer(serializers.ModelSerializer):
     products = serializers.SerializerMethodField()
     auction_products = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'password', 'email', 'first_name', 
-                'phone_number', 'image', 'rate', 'products', 'auction_products']
+        fields = ['id', 'username', 'password', 'email', 'first_name',"balance", 
+                'phone_number', 'image', 'rate', 'products', 'auction_products',"balance"]
         read_only_fields = ['products', 'auction_products']
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -258,6 +261,7 @@ class ChatSerializer(serializers.ModelSerializer):
     
     
 class NotificationSerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M",read_only=True)
     auction = ProductAuctionSerializer(read_only=True)   
     class Meta:
         model = Notification
@@ -292,7 +296,11 @@ class AuctionBidSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("The auction is end")
         if value <= auction.current_price:
             raise serializers.ValidationError("this price is less than curent price")
-        return value
+        user = self.context["request"].user
+        if user.balance < value:
+            raise serializers.ValidationError("You don't have enough money in your account")
+        return value 
+        
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
@@ -300,3 +308,22 @@ class AuctionBidSerializer(serializers.ModelSerializer):
         instance.buyer = user
         instance.save()
         return instance
+    
+class TransferRequestSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()     
+    class Meta:
+        model = TransferRequest
+        fields = ['id', 'amount', 'status', 'created_at','user_name']
+        read_only_fields = ['status', 'created_at']
+
+    def create(self, validated_data):
+        # ربط الطلب بالمستخدم الحالي
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+    def get_user_name(self, obj):
+        return obj.user.username  
+
+
+
+class TransferApproveSerializer(serializers.Serializer):
+    approve = serializers.BooleanField()

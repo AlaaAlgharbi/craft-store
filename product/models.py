@@ -27,6 +27,7 @@ class CustomUser(AbstractUser):
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     email = models.EmailField(max_length=50, blank=False, null=False, unique=True)
     rate = models.FloatField(default=0.0, blank=True, null=True)
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     wishlist = models.ManyToManyField(
         "Product", related_name="wishlisted_by", blank=True
     )
@@ -41,6 +42,28 @@ class CustomUser(AbstractUser):
         blank=True,
     )
 
+class TransferRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'pending'),
+        ('approved', 'approved'),
+        ('rejected', 'rejected'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='transfer_requests')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def approve(self):
+        if self.status == 'pending':
+            self.user.balance += self.amount
+            self.user.save()
+            self.status = 'approved'
+            self.reviewed_at = timezone.now()
+            self.save()
+
+    def __str__(self):
+        return f"{self.user.username} - {self.amount} - {self.status}"
 
 class Comment(models.Model):
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -88,6 +111,7 @@ class ProductAuction(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="auctions_created")
     comment = GenericRelation(Comment)
     comment_rate = models.FloatField(default=0.0, blank=True, null=True)
+    is_notified = models.BooleanField(default=False)
     buyer = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -168,13 +192,15 @@ class Notification(models.Model):
         ("auction_end", "Auction Ended"),
         ("outbid", "You Were Outbid"),
         ("auction_won", "You Won the Auction"),
+        ("transfer_request", "The request is pending"),
+        ("transfer_status", "The transfer status"),
     )
 
     user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="notifications"
     )
     auction = models.ForeignKey(
-        ProductAuction, on_delete=models.CASCADE, related_name="notifications"
+        ProductAuction, on_delete=models.CASCADE, related_name="notifications",null=True,blank=True
     )
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
     message = models.TextField()

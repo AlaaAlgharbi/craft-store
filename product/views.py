@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from rest_framework import generics 
 from .serializers import *
 from .models import CustomUser, Chat, Notification
 from .permissions import (
@@ -7,15 +7,16 @@ from .permissions import (
     AuthorModifyOrReadOnly2,
     IsCommentCreator,
 )
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser 
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import models
 from rest_framework import status
 from .utils import send_otp, verify_otp
-# from .image_search_utils import search_similar_products
+from .image_search_utils import search_similar_products
 from django.db.models import Q
 from django.db import transaction
+
 class UserList(generics.ListAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
@@ -41,14 +42,14 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
             if otp_status:
                 return Response(
                     {
-                        "message": "تم إرسال رمز التحقق إلى بريدك الإلكتروني الجديد. الحساب غير نشط حتى يتم التحقق."
+                        "message": "The verification code has been sent to your new email address. Your account will remain inactive until verification is completed."
                     },
                     status=status.HTTP_200_OK,
                 )
             else:
                 return Response(
                     {
-                        "message": "فشل إرسال رمز التحقق. البريد الإلكتروني لم يتم تغييره."
+                        "message": "Failed to send the verification code. The email address was not changed."
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -263,39 +264,39 @@ class SearchAllView(APIView):
             "text_search_results": text_results
         })
 
-    # def post(self, request, *args, **kwargs):
-    #     image_file = request.FILES.get('image')
-    #     if not image_file:
-    #         return Response({"error": "يجب إرسال صورة للبحث."}, status=400)
+    def post(self, request, *args, **kwargs):
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response({"error": "An image must be submitted for the search."}, status=400)
 
-    #     try:
-    #         image_results = search_similar_products(image_file, distance_threshold=55)
-    #     except ValueError as e:
-    #         # مثلاً إذا ما فيه فهرس أو قاعدة البيانات فاضية
-    #         return Response({"error": str(e)}, status=400)
-    #     except Exception as e:
-    #         # أي خطأ غير متوقع
-    #         return Response({"error": f"حدث خطأ غير متوقع: {e}"}, status=500)
+        try:
+            image_results = search_similar_products(image_file, distance_threshold=55)
+        except ValueError as e:
+            # مثلاً إذا ما فيه فهرس أو قاعدة البيانات فاضية
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            # أي خطأ غير متوقع
+            return Response({"error": f"An unexpected error {e}"}, status=500)
 
-    #     if not image_results:
-    #         return Response({
-    #             "image_search_results": [],
-    #             "message": "لا توجد نتائج مطابقة حالياً"
-    #         }, status=200)
+        if not image_results:
+            return Response({
+                "image_search_results": [],
+                "message": "No matching results at the moment"
+            }, status=200)
 
-    #     serialized_results = []
-    #     for obj in image_results:
-    #         if isinstance(obj, Product):
-    #             data = ProductSerializer(obj).data
-    #             data["type"] = "product"
-    #         elif isinstance(obj, ProductAuction):
-    #             data = ProductAuctionSerializer(obj).data
-    #             data["type"] = "auction"
-    #         else:
-    #             continue
-    #         serialized_results.append(data)
+        serialized_results = []
+        for obj in image_results:
+            if isinstance(obj, Product):
+                data = ProductSerializer(obj).data
+                data["type"] = "product"
+            elif isinstance(obj, ProductAuction):
+                data = ProductAuctionSerializer(obj).data
+                data["type"] = "auction"
+            else:
+                continue
+            serialized_results.append(data)
 
-    #     return Response({"image_search_results": serialized_results})
+        return Response({"image_search_results": serialized_results})
 
 class SearchMessageView(generics.ListAPIView):
     serializer_class = ChatSerializer
@@ -336,6 +337,24 @@ class NotificationDetailView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         serializer.save(is_read=True)
 
+class NotificationDelete(generics.DestroyAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+class NotificationDeleteAll(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        queryset = Notification.objects.filter(user=request.user)
+        queryset.delete()
+        return Response(
+            {"message": "delete all complete"},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
 
 class UnreadNotificationCount(APIView):
     permission_classes = [IsAuthenticated]
@@ -362,7 +381,7 @@ class UserRegistrationView(generics.CreateAPIView):
             if otp_status:
                 return Response(
                     {
-                        "message": "تم إرسال OTP بنجاح، يرجى التحقق من هاتفك.",
+                        "message": "OTP has been sent successfully. Please check your phone",
                     },
                     status=status.HTTP_201_CREATED,
                 )
@@ -370,7 +389,7 @@ class UserRegistrationView(generics.CreateAPIView):
                 # في حال فشل إرسال OTP، يُمكن إلغاء إنشاء الحساب
                 user.delete()
                 return Response(
-                    {"message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."},
+                    {"message": "Failed to send OTP. Please try again."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -379,11 +398,11 @@ class UserRegistrationView(generics.CreateAPIView):
 class VerifyRegistrationOTPView(generics.CreateAPIView):
     serializer_class = OTPVerifySerializer
     permission_classes = [AllowAny]
-
     def post(self, request, *args, **kwargs):
         serializer = OTPVerifySerializer(data=request.data)
         if serializer.is_valid():
             otp_code = serializer.validated_data["otp_code"]
+            print(otp_code)
             email = serializer.validated_data["email"]
             if verify_otp(email, otp_code):
                 try:
@@ -392,17 +411,17 @@ class VerifyRegistrationOTPView(generics.CreateAPIView):
                     user.save()
                     # حذف البريد الإلكتروني من الجلسة بعد التحقق
                     return Response(
-                        {"message": "تم التحقق من OTP وتفعيل الحساب بنجاح!"},
+                        {"message": "OTP verified and account successfully activated!"},
                         status=status.HTTP_200_OK,
                     )
                 except CustomUser.DoesNotExist:
                     return Response(
-                        {"message": "لا يوجد حساب مرتبط بهذا البريد يحتاج للتفعيل."},
+                        {"message": "There is no account associated with this email that requires activation."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
             else:
                 return Response(
-                    {"message": "الرمز المدخل غير صحيح. يرجى المحاولة مرة أخرى."},
+                    {"message": "The entered code is incorrect. Please try again."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -420,12 +439,12 @@ class ForgetPasswordView(generics.CreateAPIView):
         otp_status = send_otp(user)
         if otp_status:
             return Response(
-                {"message": "تم إرسال OTP بنجاح، يرجى التحقق من هاتفك."},
+                {"message": "OTP has been sent successfully. Please check your phone."},
                 status=status.HTTP_201_CREATED,
             )
         else:
             return Response(
-                {"message": "فشل إرسال OTP. يرجى المحاولة مرة أخرى."},
+                {"message": "Failed to send OTP. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
             
@@ -441,7 +460,7 @@ class ResetPasswordView(generics.CreateAPIView):
         user.set_password(password)
         user.save()
 
-        return Response({"message": "تم تغيير كلمة السر بنجاح"},
+        return Response({"message": "Password has been changed successfully."},
                         status=status.HTTP_200_OK)
 
 
@@ -493,3 +512,64 @@ class WishlistDestroyView(generics.DestroyAPIView):
             return Response(
                 {"message": "Product not found."}, status=status.HTTP_404_NOT_FOUND
             )
+
+class TransferRequestCreateView(generics.CreateAPIView):
+    """
+    يتيح للمستخدم إرسال طلب تحويل رصيد
+    """
+    serializer_class = TransferRequestSerializer
+    permission_classes = [IsAuthenticated]
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def perform_create(self, serializer):
+        transfer_request = serializer.save(user=self.request.user)
+        # إنشاء إشعار للمستخدم
+        Notification.objects.create(
+            user=self.request.user,
+            notification_type="transfer_request",
+            message=f"A transfer request of {transfer_request.amount} has been created and is currently under review."
+        )
+
+
+class TransferRequestListView(generics.ListAPIView):
+    """
+    المدير يشوف كل الطلبات المعلقة
+    """
+    serializer_class = TransferRequestSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return TransferRequest.objects.filter(status='pending').order_by('-created_at')
+
+
+class TransferReviewView(APIView):
+    """
+    المدير يوافق او يؤفض طلب التحويل
+    """ 
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        transfer = get_object_or_404(TransferRequest, pk=pk)
+        serializer = TransferApproveSerializer(data=request.data)
+        if serializer.is_valid():
+            if serializer.validated_data['approve']:
+                transfer.approve()
+                Notification.objects.create(
+                    user=transfer.user,
+                    notification_type="transfer_status",
+                    message=f"The transfer request with amount of {transfer.amount} is approved"
+                )
+                return Response({"message": "The request has been approved and the balance has been successfully credited."}, status=200)
+            else:
+                transfer.status = 'rejected'
+                transfer.save()
+                Notification.objects.create(
+                    user=transfer.user,
+                    notification_type="transfer_status",
+                    message=f"The transfer request with amount of {transfer.amount} has been rejected."
+                )
+                return Response({"message": "has been rejected"}, status=200)
+        return Response(serializer.errors, status=400)
