@@ -183,7 +183,3 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-# EMAIL_HOST_USER = 'artiauct@gmail.com'
-# EMAIL_HOST_USER = 'algarbealaa@gmail.com'
-# EMAIL_HOST_PASSWORD = 'onph tagf ngif hbnz'
-# EMAIL_HOST_PASSWORD = 'dfhy whzt bvyw ljbz'

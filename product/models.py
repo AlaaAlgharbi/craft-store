@@ -11,7 +11,7 @@ category = [
     ("Accessories", "Accessories"),
     ("Candle", "Candle"),
     ("Painting", "Painting"),
-    ("Wool", "Wool"),
+    ("Wool", "wool"),
     ("Sweet", "Sweet"),
     ("Carving", "Carving"),
     ("Decoration", "Decoration"),

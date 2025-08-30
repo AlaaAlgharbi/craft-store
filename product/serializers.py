@@ -91,7 +91,7 @@ class ProductSerializer(serializers.ModelSerializer):
     user_image = serializers.SerializerMethodField()
     class Meta :
         model = Product
-        fields = ["name","price","created_at","category","image","description","user_name","user_image"]
+        fields = ["id","name","price","created_at","category","image","description","user_name","user_image"]
         read_only_fields  = ["user_image","user_name"]
         extra_kwargs = {
             "description": {"write_only": True},}
@@ -110,7 +110,7 @@ class ProductAuctionSerializer(serializers.ModelSerializer):
     activate = serializers.SerializerMethodField()
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","created_at","initial_price","category","image",
+        fields = ["id","name","current_price","created_at","initial_price","category","image",
                 "description","user_name","user_image","product_type","end_date","activate"]
         read_only_fields  = ["user_image","user_name","current_price","activate"]
         extra_kwargs = {
