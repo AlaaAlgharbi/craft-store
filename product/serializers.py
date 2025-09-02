@@ -139,8 +139,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     user_image = serializers.SerializerMethodField()
     class Meta : 
         model = Product
-        fields = ["name","price","category","image","description","comment","comment_rate",
-                "user_name","user_image","created_at"]
+        fields = ["name","price","category","image","description","comment","negative_comment",
+                "positive_comment","user_name","user_image","created_at"]
         read_only_fields = ["created_at","user_name","user_image","comment_rate"]
         extra_kwargs = {
             "name": {"required": False},
@@ -179,8 +179,9 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     activate = serializers.SerializerMethodField()
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","initial_price","category","image","comment","comment_rate",
-                "description","buyer","user_name","user_image","product_type","end_date","created_at","activate","countdown"]
+        fields = ["name","current_price","initial_price","category","image","comment","negative_comment",
+                "positive_comment","description","buyer","user_name","user_image","product_type"
+                ,"end_date","created_at","activate","countdown"]
         read_only_fields  = ["current_price","initial_price","image",
                 "category","user_name","user_image","product_type","end_date","created_at","buyer","activate","comment_rate"]
         extra_kwargs = {

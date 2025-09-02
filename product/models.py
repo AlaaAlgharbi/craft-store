@@ -85,7 +85,8 @@ class Product(models.Model):
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False)
     comment = GenericRelation(Comment)
-    comment_rate = models.FloatField(default=0.0, blank=True, null=True)
+    negative_comment = models.FloatField(default=0.0, blank=True, null=True)
+    positive_comment = models.FloatField(default=0.0, blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -110,7 +111,8 @@ class ProductAuction(models.Model):
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="auctions_created")
     comment = GenericRelation(Comment)
-    comment_rate = models.FloatField(default=0.0, blank=True, null=True)
+    negative_comment = models.FloatField(default=0.0, blank=True, null=True)
+    positive_comment = models.FloatField(default=0.0, blank=True, null=True)
     is_notified = models.BooleanField(default=False)
     buyer = models.ForeignKey(
         CustomUser,
@@ -122,19 +124,25 @@ class ProductAuction(models.Model):
     def __str__(self):
         return self.name
 
-
 @receiver([post_save, post_delete], sender=Comment)
 def update_comment_rate(sender, instance, **kwargs):
-    # الحصول على الكائن المرتبط بالتعليق (Product أو ProductAuction)
     content_object = instance.content_object
-    # التأكد من أن الكائن لديه الحقل comment_rate (بمعناه أنه من النماذج التي تريد تحديثها)
-    if hasattr(content_object, "comment_rate"):
-        # حساب المتوسط لتقييمات التعليقات المرتبطة
-        aggregate_result = content_object.comment.aggregate(avg_rate=Avg("rate"))
-        avg_rate = aggregate_result["avg_rate"] or 0.0
-        # تحديث الحقل comment_rate وحفظ الكائن
-        content_object.comment_rate = avg_rate
+    
+    if hasattr(content_object, "negative_comment"):
+        all_comments = content_object.comment.all()
+        total_count = all_comments.count()
+        
+        positive_comments = all_comments.filter(rate__in=[4, 5])
+        positive_count = positive_comments.count()
+        percentage = round((positive_count / total_count) * 100, 2) if total_count > 0 else 0.0
+
+        
+        content_object.positive_comment = percentage
+        content_object.negative_comment = (100 - percentage )if total_count > 0 else 0.0
+
         content_object.save()
+
+
 
 class Chat(models.Model):
     sender = models.ForeignKey(
@@ -165,9 +173,7 @@ class Verify(models.Model):
 def update_user_rate_on_save(sender, instance, created, **kwargs):
     user = instance.user
     avg_rate = (
-        UserRating.objects.filter(user=user).aggregate(avg=Avg("rating"))[
-            "avg"
-        ]
+        UserRating.objects.filter(user=user).aggregate(avg=Avg("rating"))["avg"]
         or 0.0
     )
     user.rate = avg_rate

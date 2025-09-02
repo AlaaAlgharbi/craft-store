@@ -327,15 +327,15 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(user=self.request.user)
 
 
-class NotificationDetailView(generics.RetrieveUpdateAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
+# class NotificationDetailView(generics.RetrieveUpdateAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
+#     def get_queryset(self):
+#         return Notification.objects.filter(user=self.request.user)
 
-    def perform_update(self, serializer):
-        serializer.save(is_read=True)
+#     def perform_update(self, serializer):
+#         serializer.save(is_read=True)
 
 class NotificationDelete(generics.DestroyAPIView):
     serializer_class = NotificationSerializer

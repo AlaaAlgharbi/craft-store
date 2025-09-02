@@ -1,6 +1,18 @@
 from django.urls import path, include
 from .views import *
 from rest_framework.authtoken import views
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="artiauct",
+        default_version='v1',
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
 
 urlpatterns = [
     path("users/<str:username>/", UserDetail.as_view(), name="user_detail"),
@@ -19,10 +31,10 @@ urlpatterns = [
     path("search/", SearchAllView.as_view(), name="user-search"),
     path("chat/search/<str:message>/", ChatListCreateView.as_view(), name="message-search"),#البحث عن رسالة
     path("notifications/", NotificationListView.as_view(), name="notification-list"),
-    path("notifications/delete/<int:pk>", NotificationDelete.as_view(), name="notification-delete"),
+    path("notifications/delete/<int:pk>/", NotificationDelete.as_view(), name="notification-delete"),
     path("notifications/delete-all/", NotificationDeleteAll.as_view(), name="notification-delete-all"),
-    path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
-    path("notifications/unread-count/", UnreadNotificationCount.as_view(), name="unread-count"),
+    # path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
+    # path("notifications/unread-count/", UnreadNotificationCount.as_view(), name="unread-count"),
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
     path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
@@ -36,9 +48,8 @@ urlpatterns = [
 
 urlpatterns += [
     path("auth/", include("rest_framework.urls")),
-    path("token-auth/", views.obtain_auth_token),
-    path(
-    "products/<str:category>/",
-    AllProductsView.as_view(),
-    name="posts-by-category",),
-    ]
+    path("token-auth/", views.obtain_auth_token,name="login",),
+    path("products/<str:category>/",AllProductsView.as_view(),name="posts-by-category",),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+]
