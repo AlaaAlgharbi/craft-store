@@ -280,7 +280,6 @@ class OTPVerifySerializer(serializers.Serializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-    email = serializers.CharField(max_length=50)
     password = serializers.CharField(max_length=50)
 
 class AuctionBidSerializer(serializers.ModelSerializer):

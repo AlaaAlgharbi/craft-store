@@ -453,7 +453,7 @@ class ResetPasswordView(generics.CreateAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]  
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
+        email = request.query_params.get('query', '')
         password = request.data.get('password')
 
         user =get_object_or_404(CustomUser,email=email)

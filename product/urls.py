@@ -2,17 +2,17 @@ from django.urls import path, include
 from .views import *
 from rest_framework.authtoken import views
 from rest_framework import permissions
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
+# from drf_yasg.views import get_schema_view
+# from drf_yasg import openapi
 
-schema_view = get_schema_view(
-    openapi.Info(
-        title="artiauct",
-        default_version='v1',
-    ),
-    public=True,
-    permission_classes=(permissions.AllowAny,),
-)
+# schema_view = get_schema_view(
+#     openapi.Info(
+#         title="artiauct",
+#         default_version='v1',
+#     ),
+#     public=True,
+#     permission_classes=(permissions.AllowAny,),
+# )
 
 urlpatterns = [
     path("users/<str:username>/", UserDetail.as_view(), name="user_detail"),
@@ -38,6 +38,7 @@ urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/verify-otp/', VerifyRegistrationOTPView.as_view(), name='verify-registration-otp'),
     path('forget/', ForgetPasswordView.as_view(), name='forget_password'),
+    path("forget/<str:email>/", ResetPasswordView.as_view(), name="Reset-Password"),
     path("wishlist/", WishlistListCreateView.as_view(), name="wishlist"),
     path("wishlist/<int:product_id>/", WishlistDestroyView.as_view(), name="wishlist-product"),
     path('transfer/create/', TransferRequestCreateView.as_view(), name='transfer_create'),
@@ -50,6 +51,6 @@ urlpatterns += [
     path("auth/", include("rest_framework.urls")),
     path("token-auth/", views.obtain_auth_token,name="login",),
     path("products/<str:category>/",AllProductsView.as_view(),name="posts-by-category",),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+#     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+#     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
 ]
