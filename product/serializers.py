@@ -4,6 +4,7 @@ from .models import CustomUser , Product , ProductAuction , Chat , Comment, User
 from django.utils.timezone import now
 from django.utils import timezone
 from .sentiment_analysis_utils import get_sentiment
+from django.utils.dateformat import format as django_format
 
 class UserRatingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,7 +49,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'password', 'email', 'first_name',"balance", 
-                'phone_number', 'image', 'rate', 'products', 'auction_products',"balance"]
+                'phone_number', 'image', 'rate', 'products', 'auction_products',"balance","is_superuser"]
         read_only_fields = ['products', 'auction_products']
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -139,7 +140,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     user_image = serializers.SerializerMethodField()
     class Meta : 
         model = Product
-        fields = ["name","price","category","image","description","comment","negative_comment",
+        fields = ["id","name","price","category","image","description","comment","negative_comment",
                 "positive_comment","user_name","user_image","created_at"]
         read_only_fields = ["created_at","user_name","user_image","comment_rate"]
         extra_kwargs = {
@@ -151,8 +152,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return obj.user.username if obj.user else None
     def get_user_image(self, obj):
         return obj.user.image.url if obj.user and obj.user.image else None 
-    
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data):   
         for field in ["name", "price", "category"]:
             if field not in validated_data or not validated_data.get(field):
                 validated_data[field] = getattr(instance, field)
@@ -179,7 +179,7 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
     activate = serializers.SerializerMethodField()
     class Meta :
         model = ProductAuction
-        fields = ["name","current_price","initial_price","category","image","comment","negative_comment",
+        fields = ["id","name","current_price","initial_price","category","image","comment","negative_comment",
                 "positive_comment","description","buyer","user_name","user_image","product_type"
                 ,"end_date","created_at","activate","countdown"]
         read_only_fields  = ["current_price","initial_price","image",
@@ -235,30 +235,30 @@ class ProductAuctionDetailsSerializer(serializers.ModelSerializer):
                 Comment.objects.create(content_object=instance,
                 creator=self.context["request"].user,rate=comment_rate,**comment)
         return instance
+
+class ProductWithWishlistCountSerializer(ProductSerializer):
+    items = serializers.SerializerMethodField()
+
+    class Meta(ProductSerializer.Meta):
+        fields = ProductSerializer.Meta.fields + ["items"]
+
+    def get_wishlist_count(self, obj):
+        return obj.items.count()  
     
     
 class ChatSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     receiver = UserSerializer(read_only=True)
-    receiver_username = serializers.CharField(write_only=True)
     class Meta:
         model = Chat
-        fields = ['id', 'sender', 'receiver', 'receiver_username', 'message', 'timestamp', 'is_read']
+        fields = ['id', 'sender', 'receiver', 'message', 'timestamp', 'is_read']
         read_only_fields = ['sender', 'receiver', 'timestamp']
 
-    def create(self, validated_data):
-        receiver_username = validated_data.pop('receiver_username')
-        try:
-            receiver = CustomUser.objects.get(username=receiver_username)
-        except CustomUser.DoesNotExist:
-            raise serializers.ValidationError({'receiver_username': 'User not found'})     
-        validated_data['sender'] = self.context['request'].user
-        validated_data['receiver'] = receiver
-        return super().create(validated_data)
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['timestamp'] = instance.timestamp.isoformat()
-        return representation    
+        representation['timestamp'] = django_format(instance.timestamp, 'H:i')
+        return representation
+    
     
     
 class NotificationSerializer(serializers.ModelSerializer):

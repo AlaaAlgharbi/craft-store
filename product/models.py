@@ -16,7 +16,7 @@ category = [
     ("Carving", "Carving"),
     ("Decoration", "Decoration"),
     ("Bags", "Bags"),
-    ("other", "other"),
+    ("Other", "other"),
 ]
 
 
@@ -27,7 +27,7 @@ class CustomUser(AbstractUser):
     image = models.ImageField(null=True, blank=True, upload_to="photos")
     email = models.EmailField(max_length=50, blank=False, null=False, unique=True)
     rate = models.FloatField(default=0.0, blank=True, null=True)
-    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    balance = models.IntegerField( default=0)
     wishlist = models.ManyToManyField(
         "Product", related_name="wishlisted_by", blank=True
     )
@@ -200,6 +200,7 @@ class Notification(models.Model):
         ("auction_won", "You Won the Auction"),
         ("transfer_request", "The request is pending"),
         ("transfer_status", "The transfer status"),
+        ("price_change", "The price change"),
     )
 
     user = models.ForeignKey(
@@ -234,6 +235,7 @@ def notify_previous_bidder(sender, instance, created, **kwargs):
     if not created and hasattr(instance, '_previous_buyer'):
         previous_buyer = instance._previous_buyer
         current_buyer = instance.buyer
+        owner=instance.user
 
         if previous_buyer and previous_buyer != current_buyer:
             Notification.objects.create(
@@ -241,4 +243,9 @@ def notify_previous_bidder(sender, instance, created, **kwargs):
                 auction=instance,
                 notification_type="outbid",
                 message=f"You were outbid on {instance.name}. Current price: {instance.current_price}", )
-
+        Notification.objects.create(
+                user=owner,
+                auction=instance,
+                notification_type="price_change",
+                message=f"{current_buyer} bid {instance.current_price}. on {instance.name}", )
+        

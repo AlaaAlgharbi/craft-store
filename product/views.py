@@ -16,6 +16,10 @@ from .utils import send_otp, verify_otp
 from .image_search_utils import search_similar_products
 from django.db.models import Q
 from django.db import transaction
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from django.db.models import Max
+
 
 class UserList(generics.ListAPIView):
     queryset = CustomUser.objects.all()
@@ -33,34 +37,55 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         new_email = request.data.get("email")  # استخراج البريد الجديد من الطلب
 
-        if new_email and new_email != instance.email:
-            # إذا تغيّر البريد، قم بإرسال رمز تحقق وجعل الحساب غير نشط
-            instance.is_active = False
-            instance.email = new_email
-            instance.save()
-            otp_status = send_otp(instance)
-            if otp_status:
-                return Response(
-                    {
-                        "message": "The verification code has been sent to your new email address. Your account will remain inactive until verification is completed."
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(
-                    {
-                        "message": "Failed to send the verification code. The email address was not changed."
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        # if new_email and new_email != instance.email:
+        #     # إذا تغيّر البريد، قم بإرسال رمز تحقق وجعل الحساب غير نشط
+        #     instance.is_active = False
+        #     instance.email = new_email
+        #     instance.save()
+        #     otp_status = send_otp(instance)
+        #     if otp_status:
+        #         return Response(
+        #             {
+        #                 "message": "The verification code has been sent to your new email address. Your account will remain inactive until verification is completed."
+        #             },
+        #             status=status.HTTP_200_OK,
+        #         )
+        #     else:
+        #         return Response(
+        #             {
+        #                 "message": "Failed to send the verification code. The email address was not changed."
+        #             },
+        #             status=status.HTTP_400_BAD_REQUEST,
+        #         )
 
         # إذا لم يتم تغيير البريد الإلكتروني، قم بتحديث البيانات الأخرى فقط
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+
         self.perform_update(serializer)
 
+        # إعادة تحميل البيانات بعد التحديث
+        serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
+class CustomAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'username': user.username,
+            'admin':user.is_superuser,
+        })
 
 class AllProductsView(APIView):
     def get(self, request, *args, **kwargs):
@@ -86,11 +111,14 @@ class AllProductsView(APIView):
         # الحصول على قيم الأسعار من المعلمات
         min_price = request.query_params.get("min_price")
         max_price = request.query_params.get("max_price")
-
+        print(min_price)
+        print(max_price)
         if min_price and max_price:
             min_price = float(min_price)
             max_price = float(max_price)
             # تصفية المنتجات حسب نطاق السعر
+            if min_price==0:
+                min_price+=1
             combined_data = [
                 item
                 for item in combined_data
@@ -191,11 +219,33 @@ class AuctionBidView(generics.UpdateAPIView):
         with transaction.atomic():
             # Lock the auction row for this transaction
             auction = ProductAuction.objects.select_for_update().get(pk=auction_id)
-            serializer = self.get_serializer(auction, data=request.data, partial=False)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
+            serializer = self.get_serializer(auction, data=request.data, partial=True)
 
+        # تحقق من الصحة واطبع الأخطاء إن وجدت
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer.save()
+        return Response(serializer.data)
+
+
+class SearchChatView(generics.ListCreateAPIView):
+    serializer_class = ChatSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        
+        username_query = self.kwargs.get("user")
+        current_user = self.request.user
+        matching_users = CustomUser.objects.filter(username__icontains=username_query).exclude(id=current_user.id)
+
+        if not matching_users.exists():
+            return Chat.objects.none()
+
+        return Chat.objects.filter(
+            Q(sender=current_user, receiver__in=matching_users) |
+            Q(receiver=current_user, sender__in=matching_users)
+        ).order_by("-timestamp")
 
 class ChatListCreateView(generics.ListCreateAPIView):
     serializer_class = ChatSerializer
@@ -203,8 +253,28 @@ class ChatListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # return Chat.objects.filter(models.Q(sender=user)).order_by("-timestamp")
-        return Chat.objects.filter(models.Q(sender=user) | models.Q(receiver=user)).order_by("-timestamp")
+        # جلب آخر وقت رسالة لكل محادثة
+        last_messages = (
+            Chat.objects
+            .filter(Q(sender=user) | Q(receiver=user))
+            .annotate(
+                other_user_id=models.Case(
+                    models.When(sender=user, then='receiver'),
+                    default='sender',
+                    output_field=models.IntegerField()
+                )
+            )
+            .values('other_user_id')
+            .annotate(last_time=Max('timestamp'))
+            .values_list('last_time', flat=True)
+        )
+
+        # جلب الرسائل التي هي آخر رسالة لكل محادثة
+        return (
+            Chat.objects
+            .filter(timestamp__in=last_messages)
+            .order_by('-timestamp')
+        )
 
 
 class ChatDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -216,18 +286,28 @@ class ChatDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Chat.objects.filter(models.Q(sender=user) | models.Q(receiver=user))
 
 
-class UserChatListView(generics.ListAPIView):
+class UserChatListView(generics.ListCreateAPIView):
     serializer_class = ChatSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        other_user_id = self.kwargs["user_id"]
+        other_username = self.kwargs["username"]
         return Chat.objects.filter(
-            (models.Q(sender=user) & models.Q(receiver_id=other_user_id))
-            | (models.Q(sender_id=other_user_id) & models.Q(receiver=user))
-        ).order_by("-timestamp")
+            Q(sender=user, receiver__username=other_username) |
+            Q(sender__username=other_username, receiver=user)
+            ).order_by("-timestamp")
+    def perform_create(self, serializer):
+            sender = self.request.user
+            receiver_username = self.kwargs["username"]
 
+            try:
+                receiver = CustomUser.objects.get(username=receiver_username)
+            except CustomUser.DoesNotExist:
+                raise ValueError("المستخدم المستقبل غير موجود")
+
+            serializer.save(sender=sender, receiver=receiver)
+            
 
 class SearchAllView(APIView):
     permission_classes = [AllowAny]
@@ -402,12 +482,12 @@ class VerifyRegistrationOTPView(generics.CreateAPIView):
         serializer = OTPVerifySerializer(data=request.data)
         if serializer.is_valid():
             otp_code = serializer.validated_data["otp_code"]
-            print(otp_code)
             email = serializer.validated_data["email"]
             if verify_otp(email, otp_code):
                 try:
-                    user = CustomUser.objects.get(email=email, is_active=False)
-                    user.is_active = True
+                    user = CustomUser.objects.get(email=email)
+                    if user.is_active == False: 
+                        user.is_active = True
                     user.save()
                     # حذف البريد الإلكتروني من الجلسة بعد التحقق
                     return Response(
@@ -453,7 +533,8 @@ class ResetPasswordView(generics.CreateAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]  
     def post(self, request, *args, **kwargs):
-        email = request.query_params.get('query', '')
+        email = kwargs.get('email')
+        print(email)
         password = request.data.get('password')
 
         user =get_object_or_404(CustomUser,email=email)
@@ -471,6 +552,14 @@ class WishlistListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return self.request.user.wishlist.all()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            "items": queryset.count(),
+            "products": serializer.data
+        })        
 
     def post(self, request):
         product_id = request.data.get("product_id")
@@ -496,7 +585,7 @@ class WishlistDestroyView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProductSerializer
     def destroy(self, request, *args,**kwaargs):
-        product_id=request.data.get("product_id")
+        product_id=self.kwargs.get("product_id")
         try:
             product = Product.objects.get(id=product_id)
             if product not in request.user.wishlist.all():

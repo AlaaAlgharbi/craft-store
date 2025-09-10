@@ -14,8 +14,7 @@ def send_otp(user):
     otp_instance = Verify.objects.create(
     user=user,
     token=otp
-)
-    
+)  
     subject = 'Your verificationHere code'
     message = f'Your verification code is: {otp}'
     from_email = 'artiauct@gmail.com'
