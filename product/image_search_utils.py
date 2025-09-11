@@ -90,7 +90,7 @@ def get_faiss_index():
     return FAISS_INDEX, ALL_ITEMS
 
 
-def search_similar_products(query_image, distance_threshold=55):
+def search_similar_products(query_image, distance_threshold=60):
     """
     تقوم هذه الدالة بتحويل صورة البحث إلى embedding ثم تبحث في الفهرس عن الصور
     التي تكون مسافتها أقل من العتبة المحددة.

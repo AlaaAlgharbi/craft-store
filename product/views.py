@@ -111,8 +111,6 @@ class AllProductsView(APIView):
         # الحصول على قيم الأسعار من المعلمات
         min_price = request.query_params.get("min_price")
         max_price = request.query_params.get("max_price")
-        print(min_price)
-        print(max_price)
         if min_price and max_price:
             min_price = float(min_price)
             max_price = float(max_price)
@@ -534,7 +532,6 @@ class ResetPasswordView(generics.CreateAPIView):
     permission_classes = [AllowAny]  
     def post(self, request, *args, **kwargs):
         email = kwargs.get('email')
-        print(email)
         password = request.data.get('password')
 
         user =get_object_or_404(CustomUser,email=email)
